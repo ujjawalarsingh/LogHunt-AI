@@ -138,9 +138,10 @@ body::before {
   transition: all 0.3s ease;
 }
 .btn-primary:hover {
-  background: #1E2A38;
-  color: #00B8C2;
-  border-color: rgba(0,245,255,0.2);
+  background: #161114;
+  color: #FF3D5A;
+  border-color: rgba(255,61,90,0.25);
+  box-shadow: 0 0 15px rgba(255,61,90,0.08);
 }
 
 /* ── Table row hover ── */
