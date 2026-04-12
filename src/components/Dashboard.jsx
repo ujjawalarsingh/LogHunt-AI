@@ -1,15 +1,11 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Search, Upload, AlertTriangle, AlertCircle, Info, Activity, Clock, Shield, Database, ChevronRight, Check } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
+import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
 
-const MOCK_LOGS = [
-  { ts: '14:23:05.12', ip: '192.168.1.105', event: 'SQL Injection Attempt', type: 'ATTACK', level: 'CRITICAL' },
-  { ts: '14:22:58.44', ip: '45.231.1.22',   event: 'Brute Force Detected',  type: 'ATTACK', level: 'HIGH' },
-  { ts: '14:21:12.01', ip: '203.0.113.88',  event: 'Port Scan Activity',    type: 'RECON',  level: 'MEDIUM' },
-  { ts: '14:19:45.33', ip: '10.0.0.12',     event: 'Unauthorized Login',    type: 'AUTH',   level: 'MEDIUM' },
-  { ts: '14:18:02.99', ip: '172.16.254.1',  event: 'Anomalous Traffic Spike',type:'ANOMALY',level: 'LOW' },
-  { ts: '14:16:30.11', ip: '8.8.4.4',       event: 'DNS Tunneling Detected', type:'EXFIL',  level: 'HIGH' },
-  { ts: '14:14:18.55', ip: '192.168.0.250', event: 'Successful Login',       type:'AUTH',   level: 'INFO' },
-];
+
 
 const QUERY_MAP = {
   'failed ssh': "SELECT * FROM logs\nWHERE event = 'failed_login'\n  AND protocol = 'SSH'\n  AND time > NOW() - INTERVAL '24h'\nORDER BY time DESC\nLIMIT 100;",
@@ -18,37 +14,36 @@ const QUERY_MAP = {
 };
 
 function LevelBadge({ level }) {
-  const cls = {
-    CRITICAL: 'badge-critical',
-    HIGH:     'badge-high',
-    MEDIUM:   'badge-medium',
-    LOW:      'badge-low',
-    INFO:     'badge-normal',
-  }[level] || 'badge-normal';
-  return (
-    <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-display font-bold tracking-[0.12em] ${cls}`}>
-      {level}
-    </span>
-  );
+  const v = {
+    CRITICAL: 'critical',
+    HIGH: 'high',
+    MEDIUM: 'medium',
+    LOW: 'low',
+    INFO: 'info',
+  }[level] || 'default';
+  return <Badge variant={v}>{level}</Badge>;
 }
 
-function StatCard({ icon: Icon, label, value, sub, accent, delay }) {
+function StatCard({ icon: Icon, label, value, sub, delay, colorCls }) {
   return (
-    <div className={`glass rounded-2xl p-5 anim-fade-up delay-${delay}`} style={{ borderColor: accent + '22' }}>
-      <div className="flex items-center justify-between mb-4">
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: accent + '14', border: `1px solid ${accent}28` }}>
-          <Icon className="w-4 h-4" style={{ color: accent }} strokeWidth={1.8} />
+    <Card className={`anim-fade-up delay-${delay}`}>
+      <CardContent className="p-5 pt-5 flex flex-col justify-between h-full">
+        <div className="flex items-center justify-between mb-4">
+          <div className={`w-9 h-9 rounded-xl flex items-center justify-center bg-background/50 border border-border`}>
+            <Icon className={`w-4 h-4 ${colorCls}`} strokeWidth={1.8} />
+          </div>
+          <span className="text-[10px] font-display text-muted-foreground tracking-[0.15em] uppercase">{sub}</span>
         </div>
-        <span className="text-[10px] font-display text-[#665656] tracking-[0.15em] uppercase">{sub}</span>
-      </div>
-      <div className="font-display text-[28px] font-bold leading-none mb-1" style={{ color: accent, textShadow: `0 0 18px ${accent}55` }}>{value}</div>
-      <div className="text-[12px] text-[#918282] font-medium">{label}</div>
-    </div>
+        <div className={`font-display text-[28px] font-bold leading-none mb-1 ${colorCls}`}>{value}</div>
+        <div className="text-[12px] text-muted-foreground font-medium">{label}</div>
+      </CardContent>
+    </Card>
   );
 }
 
 export default function Dashboard() {
-  const [logs, setLogs] = useState(MOCK_LOGS);
+  const [logs, setLogs] = useState([]);
+  const [allLogs, setAllLogs] = useState([]);
   const [query, setQuery] = useState('');
   const [generatedSQL, setGeneratedSQL] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
@@ -56,6 +51,8 @@ export default function Dashboard() {
   const [uploadProgress, setUploadProgress] = useState(null);
   const [uploadDone, setUploadDone] = useState(false);
   const fileRef = useRef();
+
+
 
   const handleAnalyze = () => {
     if (!query.trim()) return;
@@ -67,295 +64,404 @@ export default function Dashboard() {
         ? QUERY_MAP[key]
         : `SELECT * FROM logs\nWHERE event ILIKE '%${query.replace(/'/g, '')}%'\n  AND time > NOW() - INTERVAL '24h'\nORDER BY time DESC\nLIMIT 200;`;
       setGeneratedSQL(sql);
+      const lowerQuery = query.toLowerCase();
+
+      if (lowerQuery.includes("sql")) {
+        setLogs(allLogs.filter(l => l.event.toLowerCase().includes("sql")));
+      } else if (lowerQuery.includes("brute")) {
+        setLogs(allLogs.filter(l => l.event.toLowerCase().includes("brute")));
+      } else if (lowerQuery.includes("login")) {
+        setLogs(allLogs.filter(l => l.event.toLowerCase().includes("login")));
+      } else {
+        setLogs(allLogs);
+      }
       setAnalyzing(false);
     }, 1400);
   };
 
-  const handleFile = () => {
+  const handleFile = (file) => {
+    if (!file) return;
+
+    // Only process JSON files
+    if (!file.name.endsWith('.json')) {
+      // For non-JSON files (.log, .pcap) just simulate the progress bar
+      setUploadProgress(0);
+      setUploadDone(false);
+      let p = 0;
+      const iv = setInterval(() => {
+        p += Math.random() * 18 + 5;
+        if (p >= 100) {
+          clearInterval(iv);
+          setUploadProgress(100);
+          setTimeout(() => setUploadDone(true), 300);
+        } else {
+          setUploadProgress(Math.min(p, 99));
+        }
+      }, 120);
+      return;
+    }
+
+    // JSON ingestion
     setUploadProgress(0);
     setUploadDone(false);
-    let p = 0;
-    const iv = setInterval(() => {
-      p += Math.random() * 18 + 5;
-      if (p >= 100) {
-        clearInterval(iv);
+
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      try {
+        const parsed = JSON.parse(e.target.result);
+        const raw = Array.isArray(parsed) ? parsed : [parsed];
+
+        const mapped = raw.map((entry) => ({
+          ts: entry.timestamp ?? entry.ts ?? '--:--:--.--',
+          ip: entry.ip ?? '0.0.0.0',
+          event: entry.event ?? 'Unknown Event',
+          type: entry.type ?? 'UNKNOWN',
+          level: (entry.level ?? 'INFO').toUpperCase(),
+        }));
+
+        setAllLogs(mapped);
+        setLogs(mapped);
         setUploadProgress(100);
         setTimeout(() => setUploadDone(true), 300);
-      } else {
-        setUploadProgress(Math.min(p, 99));
+      } catch {
+        alert('Invalid JSON file. Please upload a valid JSON log file.');
+        setUploadProgress(null);
+        setUploadDone(false);
       }
-    }, 120);
+    };
+
+    reader.onerror = () => {
+      alert('Failed to read file. Please try again.');
+      setUploadProgress(null);
+    };
+
+    // Simulate progress while reading
+    let p = 0;
+    const iv = setInterval(() => {
+      p += Math.random() * 20 + 8;
+      if (p >= 90) {
+        clearInterval(iv);
+        setUploadProgress(90); // hold at 90 until parse completes
+      } else {
+        setUploadProgress(Math.min(p, 89));
+      }
+    }, 100);
+
+    reader.readAsText(file);
   };
 
   const handleDrop = (e) => {
     e.preventDefault();
     setDragOver(false);
-    handleFile();
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 bg-[#050303]">
+    <div className="flex-1 flex flex-col min-h-0 bg-background text-foreground">
       {/* ─── Header ─── */}
-      <header className="shrink-0 px-8 py-4 border-b border-[#281414] bg-[#0B0707]/80 backdrop-blur flex items-center justify-between">
+      <header className="shrink-0 px-8 py-5 border-b border-border bg-card/50 backdrop-blur-md flex items-center justify-between">
         <div>
-          <h1 className="font-display text-[22px] font-bold text-white tracking-tight leading-none">LogHunt AI Dashboard</h1>
-          <p className="text-[12px] text-[#665656] mt-1 font-medium">AI-powered threat detection · LoRA Fine-Tuned</p>
+          <h1 className="font-display text-2xl font-bold tracking-tight leading-none text-foreground">LOGHUNT AI DASHBOARD</h1>
+          <p className="text-xs text-muted-foreground mt-1 font-medium">AI-powered threat detection · LoRA Fine-Tuned</p>
         </div>
         <div className="flex items-center gap-4">
-          {/* Search */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#665656]" strokeWidth={2} />
-            <input
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" strokeWidth={2} />
+            <Input
               type="text"
               placeholder="Search logs..."
-              className="bg-[#120A0A] border border-[#281414] rounded-lg pl-9 pr-4 py-2 text-[12px] text-[#918282] placeholder:text-[#665656] outline-none focus:border-[rgba(128,0,0,0.3)] transition-colors w-52"
+              className="pl-9 w-64"
             />
           </div>
-          {/* Health */}
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[#281414] bg-[#120A0A]">
-            <div className="w-2 h-2 rounded-full bg-[#A39D82] relative" style={{boxShadow:'0 0 8px #A39D82'}}>
-              <div className="absolute inset-0 rounded-full bg-[#A39D82] animate-ping opacity-50"></div>
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-background">
+            <div className="w-2 h-2 rounded-full bg-green-500 relative">
+              <div className="absolute inset-0 rounded-full bg-green-500 animate-ping opacity-50"></div>
             </div>
-            <span className="text-[11px] font-display font-bold text-[#A39D82] tracking-[0.1em]">ACTIVE</span>
+            <span className="text-[11px] font-display font-bold text-green-500 tracking-[0.1em] uppercase">Active</span>
           </div>
-          {/* Model badge */}
-          <div className="px-3 py-2 rounded-lg border border-[rgba(128,0,0,0.18)] bg-[rgba(128,0,0,0.06)]">
-            <span className="text-[10px] font-display font-bold text-[#5A0B0B] tracking-[0.1em]">LoRA-Fine-Tuned: Online</span>
-          </div>
+          <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
+            LoRA-Fine-Tuned: Online
+          </Badge>
         </div>
       </header>
 
-      {/* ─── Scrollable content ─── */}
+      {/* ─── Main Content ─── */}
       <main className="flex-1 overflow-y-auto px-8 py-8 space-y-8">
-        {/* ── STAT CARDS ── */}
-        <div className="grid grid-cols-3 gap-5">
-          <StatCard icon={Database} label="Total Logs Analyzed" value="847,291" sub="Today" accent="#800000" delay={1} />
-          <StatCard icon={AlertTriangle} label="Threats Detected" value="12" sub="Active" accent="#E31B1B" delay={2} />
-          <StatCard icon={Clock} label="Avg Inference Time (LoRA)" value="78ms" sub="p95: 112ms" accent="#CC7A33" delay={3} />
-        </div>
 
-        {/* ── AI CHAT + SQL PANEL ── */}
-        <div className="grid grid-cols-2 gap-5 anim-fade-up delay-3">
-          {/* Chat */}
-          <div className="glass rounded-2xl p-6 flex flex-col">
-            <div className="flex items-center gap-2 mb-5">
-              <Activity className="w-4 h-4 text-[#5A0B0B]" strokeWidth={1.8} />
-              <span className="text-[11px] font-display font-bold text-[#918282] tracking-[0.15em] uppercase">AI Chat & Query</span>
-            </div>
-            <p className="text-[12px] text-[#665656] mb-4">Ask in natural language. The LoRA model translates your query to SQL.</p>
-            <div className="flex gap-2 mb-2">
-              <input
-                value={query}
-                onChange={e => setQuery(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleAnalyze()}
-                placeholder='e.g. "Show failed SSH logins"'
-                className="flex-1 bg-[#120A0A] border border-[#281414] rounded-xl px-4 py-3 text-[13px] text-[#F0EBEB] placeholder:text-[#665656] outline-none focus:border-[rgba(128,0,0,0.3)] transition-colors font-mono text-[12px]"
-              />
-              <button
-                onClick={handleAnalyze}
-                disabled={analyzing || !query.trim()}
-                className="btn-primary px-5 py-3 rounded-xl text-[12px] font-display font-bold tracking-wide disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {analyzing ? (
-                  <><span className="animate-spin inline-block">⟳</span> Analyzing…</>
-                ) : (
-                  <>Run <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.5} /></>
-                )}
-              </button>
-            </div>
-            {/* Quick suggestions */}
-            <div className="flex flex-wrap gap-2 mt-2">
-              {['failed SSH logins', 'SQL injection attempts', 'brute force IPs'].map(s => (
-                <button
-                  key={s}
-                  onClick={() => { setQuery(s); }}
-                  className="px-2.5 py-1 rounded-md bg-[#120A0A] border border-[#281414] text-[10px] font-mono text-[#665656] hover:text-[#5A0B0B] hover:border-[rgba(128,0,0,0.2)] transition-all"
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          </div>
+        {/* STAT CARDS */}
+        <div className="grid grid-cols-3 gap-6">
+          <StatCard icon={Database} label="Total Logs Analyzed" value={logs.length} sub="Today" delay={1} colorCls="text-primary" />
+          <StatCard icon={AlertTriangle} label="Threats Detected" value={logs.filter(l => l.level === 'CRITICAL' || l.level === 'HIGH').length} sub="Active" delay={2} colorCls="text-destructive" />
+          <StatCard icon={Clock} label="Avg Inference Time (LoRA)" value={"--"} sub="p95: --" delay={3} colorCls="text-amber-500" /></div>
 
-          {/* SQL Output */}
-          <div className="glass rounded-2xl p-6 flex flex-col">
-            <div className="flex items-center gap-2 mb-5">
-              <Database className="w-4 h-4 text-[#5A0B0B]" strokeWidth={1.8} />
-              <span className="text-[11px] font-display font-bold text-[#918282] tracking-[0.15em] uppercase">Generated SQL Query</span>
-              {generatedSQL && (
-                <span className="ml-auto text-[9px] font-display font-bold text-[#A39D82] bg-[rgba(163,157,130,0.1)] border border-[rgba(163,157,130,0.2)] px-2 py-0.5 rounded tracking-widest">READY</span>
-              )}
-            </div>
-            <div className="flex-1 bg-[#050303] border border-[#281414] rounded-xl p-4 font-display text-[11px] leading-[1.9] min-h-[120px] relative overflow-auto">
-              {analyzing && (
-                <div className="flex items-center gap-2 text-[#665656]">
-                  <span className="animate-pulse">▍</span> Generating query…
+        {/* AI CHAT + SQL PANEL */}
+        <div className="grid grid-cols-2 gap-6 anim-fade-up delay-3">
+
+          <Card className="flex flex-col">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <Activity className="w-4 h-4 text-primary" strokeWidth={1.8} />
+                <CardTitle className="text-[11px] font-display text-muted-foreground tracking-[0.15em] uppercase">
+                  AI Threat Query Engine
+                </CardTitle></div>
+            </CardHeader>
+            <CardContent className="flex-1 flex flex-col">
+              <p className="text-sm text-foreground/80 mb-4">Ask in natural language. The LoRA model translates your query to SQL.</p>
+              <div className="flex gap-2 mb-3">
+                <Input
+                  value={query}
+                  onChange={e => setQuery(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleAnalyze()}
+                  placeholder='e.g. "Show failed SSH logins"'
+                  className="font-mono text-xs"
+                />
+                <Button onClick={handleAnalyze} disabled={analyzing || !query.trim()} className="gap-2">
+                  {analyzing ? (
+                    <><span className="animate-spin">⟳</span> Analyzing…</>
+                  ) : (
+                    <>Run <ChevronRight className="w-4 h-4" /></>
+                  )}
+                </Button>
+              </div>
+              <div className="flex flex-wrap gap-2 mt-auto">
+                {['failed SSH logins', 'SQL injection attempts', 'brute force IPs'].map(s => (
+                  <Badge key={s} variant="outline" className="cursor-pointer font-mono hover:bg-accent lowercase text-xs" onClick={() => setQuery(s)}>
+                    {s}
+                  </Badge>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="flex flex-col">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2 justify-between">
+                <div className="flex items-center gap-2">
+                  <Database className="w-4 h-4 text-primary" strokeWidth={1.8} />
+                  <CardTitle className="text-[11px] font-display text-muted-foreground tracking-[0.15em] uppercase">Generated SQL Query</CardTitle>
                 </div>
-              )}
-              {!analyzing && !generatedSQL && (
-                <span className="text-[#3D1C1C]">// SQL will appear here after analysis</span>
-              )}
-              {!analyzing && generatedSQL && (
-                <pre className="text-[#800000] text-glow-maroon whitespace-pre-wrap">{generatedSQL}</pre>
-              )}
-            </div>
-          </div>
+                {generatedSQL && <Badge variant="info">READY</Badge>}
+              </div>
+            </CardHeader>
+            <CardContent className="flex-1 flex flex-col">
+              <div className="flex-1 bg-background border border-border rounded-lg p-4 font-mono text-[11px] leading-[1.8] min-h-[140px] overflow-auto">
+                {analyzing ? (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <span className="animate-pulse">▍</span> Generating query…
+                  </div>
+                ) : !generatedSQL ? (
+                  <span className="text-muted-foreground/50">// SQL will appear here after analysis</span>
+                ) : (
+                  <pre className="text-primary text-glow-cyan whitespace-pre-wrap">{generatedSQL}</pre>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* ── DROP ZONE ── */}
+        {/* DROP ZONE */}
         <div
-          className={`anim-fade-up delay-4 rounded-2xl border-2 border-dashed transition-all duration-200 p-8 text-center cursor-pointer
-            ${dragOver
-              ? 'border-[#800000] bg-[rgba(128,0,0,0.05)]'
-              : 'border-[#281414] hover:border-[#3D1C1C] bg-[#0B0707]'}`}
+          className={`anim-fade-up delay-4 rounded-xl border-2 border-dashed transition-all duration-300 p-10 text-center cursor-pointer
+            ${dragOver ? 'border-primary bg-primary/5' : 'border-border hover:border-muted-foreground/50 bg-card/30'}`}
           onDragOver={e => { e.preventDefault(); setDragOver(true); }}
           onDragLeave={() => setDragOver(false)}
           onDrop={handleDrop}
           onClick={() => fileRef.current?.click()}
         >
           <input ref={fileRef} type="file" accept=".log,.json,.pcap" className="hidden" onChange={handleFile} />
-          <div className={`w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center transition-all ${dragOver ? 'bg-[rgba(128,0,0,0.12)] border-[rgba(128,0,0,0.3)]' : 'bg-[#120A0A] border-[#281414]'} border`}>
-            {uploadDone
-              ? <Check className="w-5 h-5 text-[#A39D82]" strokeWidth={2.5} />
-              : <Upload className="w-5 h-5 text-[#665656]" strokeWidth={1.8} />
-            }
+          <div className={`w-14 h-14 rounded-full mx-auto mb-5 flex items-center justify-center transition-colors border ${dragOver ? 'bg-primary/10 border-primary/30' : 'bg-background border-border'}`}>
+            {uploadDone ? <Check className="w-6 h-6 text-green-500" /> : <Upload className="w-6 h-6 text-muted-foreground" />}
           </div>
-          {uploadDone ? (
-            <p className="text-[14px] font-semibold text-[#A39D82] mb-1">File ingested successfully!</p>
-          ) : (
-            <p className="text-[14px] font-semibold text-[#918282] mb-1">Drop .log, .json, or .pcap files here</p>
-          )}
-          <p className="text-[11px] text-[#665656]">or click to browse · Log Collection Module</p>
+          <h3 className="text-base font-semibold text-foreground mb-1">
+            {uploadDone ? "File ingested successfully!" : "Drop .log, .json, or .pcap files here"}
+          </h3>
+          <p className="text-sm text-muted-foreground">or click to browse · Secure Log Collection Module</p>
 
           {uploadProgress !== null && !uploadDone && (
-            <div className="mt-5 max-w-xs mx-auto">
-              <div className="h-1.5 bg-[#281414] rounded-full overflow-hidden">
+            <div className="mt-6 max-w-sm mx-auto">
+              <div className="h-1.5 bg-background rounded-full overflow-hidden border border-border">
                 <div
-                  className="h-full rounded-full transition-all duration-300"
-                  style={{
-                    width: `${uploadProgress}%`,
-                    background: 'linear-gradient(90deg, #5A0B0B, #800000)',
-                    boxShadow: '0 0 10px rgba(128,0,0,0.5)',
-                  }}
+                  className="h-full bg-primary transition-all duration-300"
+                  style={{ width: `${uploadProgress}%`, boxShadow: '0 0 10px var(--color-primary)' }}
                 ></div>
               </div>
-              <p className="text-[10px] font-display text-[#665656] mt-2">{Math.round(uploadProgress)}% ingested</p>
+              <p className="text-[10px] font-display text-muted-foreground mt-2 uppercase">{Math.round(uploadProgress)}% ingested</p>
             </div>
           )}
         </div>
 
-        {/* ── LIVE LOG STREAM TABLE ── */}
-        <div className="glass rounded-2xl overflow-hidden anim-fade-up delay-4">
-          {/* Table header */}
-          <div className="px-6 py-4 border-b border-[#281414] flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-2 h-2 rounded-full bg-[#E31B1B] relative" style={{boxShadow:'0 0 8px #E31B1B'}}>
-                <div className="absolute inset-0 rounded-full bg-[#E31B1B] animate-ping opacity-60"></div>
-              </div>
-              <span className="text-[11px] font-display font-bold text-white tracking-[0.15em] uppercase">Live Log Stream</span>
+        <Card className="anim-fade-up delay-4 border-border bg-card/60">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-primary">🤖</span>
+              <CardTitle className="text-[11px] font-display text-muted-foreground tracking-[0.15em] uppercase">
+                AI Insight
+              </CardTitle>
             </div>
-            <span className="text-[10px] font-display text-[#665656] tracking-[0.1em]">{logs.length} ACTIVE INCIDENTS</span>
+          </CardHeader>
+
+          <CardContent className="space-y-2">
+            <div>
+              <span className="text-xs text-muted-foreground">Summary:</span>
+              <p className="text-sm text-foreground font-medium">
+                {logs.some(l => l.event.toLowerCase().includes("sql"))
+                  ? "Detected SQL injection attempts from multiple sources."
+                  : logs.some(l => l.event.toLowerCase().includes("brute"))
+                    ? "Brute force login attempts detected."
+                    : "No major threats detected."}
+              </p>
+            </div>
+
+            <div>
+              <span className="text-xs text-muted-foreground">Recommendation:</span>
+              <p className="text-sm text-foreground font-medium">
+                {logs.some(l => l.event.toLowerCase().includes("sql"))
+                  ? "Block suspicious IPs and secure database endpoints."
+                  : logs.some(l => l.event.toLowerCase().includes("brute"))
+                    ? "Enable rate limiting and account lockout policies."
+                    : "System operating normally."}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* LIVE LOG STREAM TABLE */}
+        <Card className="anim-fade-up delay-4 overflow-hidden border-border bg-card/60">
+          <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-2 h-2 rounded-full bg-destructive relative">
+                <div className="absolute inset-0 rounded-full bg-destructive animate-ping opacity-60"></div>
+              </div>
+              <span className="text-[11px] font-display font-bold text-foreground tracking-[0.15em] uppercase">Live Log Stream</span>
+            </div>
+            <span className="text-[10px] font-display text-muted-foreground tracking-[0.1em] uppercase">{logs.length} ACTIVE INCIDENTS</span>
           </div>
 
-          {/* Table */}
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-[#281414]">
+            <table className="w-full text-sm">
+              <thead className="bg-background/20">
+                <tr className="border-b border-border">
                   {['Timestamp', 'Source IP', 'Event Type', 'Category', 'Threat Classification'].map(h => (
-                    <th key={h} className="px-6 py-3 text-left text-[9px] font-display font-bold text-[#665656] tracking-[0.18em] uppercase">{h}</th>
+                    <th key={h} className="px-6 py-3 text-left text-[10px] font-display font-bold text-muted-foreground tracking-[0.15em] uppercase">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody>
-                {logs.map((row, i) => (
-                  <tr key={i} className="tbl-row">
-                    <td className="px-6 py-4 font-display text-[11px] text-[#665656]">{row.ts}</td>
-                    <td className="px-6 py-4 font-display text-[12px] text-[#5A0B0B] font-bold">{row.ip}</td>
-                    <td className="px-6 py-4 text-[13px] text-[#F0EBEB] font-medium">{row.event}</td>
-                    <td className="px-6 py-4">
-                      <span className="font-display text-[9px] font-bold text-[#918282] bg-[#120A0A] border border-[#281414] px-2 py-1 rounded tracking-widest">{row.type}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <LevelBadge level={row.level} />
+              <tbody className="divide-y divide-border">
+                {logs.length === 0 ? (
+                  <tr>
+                    <td colSpan="5" className="text-center py-6 text-muted-foreground">
+                      No logs yet. Upload a file to begin analysis.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  logs.map((row, i) => (
+                    <tr key={i} className="transition-colors hover:bg-muted/50 group">
+                      <td className="px-6 py-4 font-mono text-xs text-muted-foreground">{row.ts}</td>
+                      <td className="px-6 py-4 font-mono text-xs text-primary font-bold">{row.ip}</td>
+                      <td className="px-6 py-4 text-foreground font-medium">{row.event}</td>
+                      <td className="px-6 py-4">
+                        <Badge variant="outline" className="font-mono text-[10px] text-muted-foreground border-border">{row.type}</Badge>
+                      </td>
+                      <td className="px-6 py-4">
+                        <LevelBadge level={row.level} />
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
-        </div>
+        </Card>
 
-        {/* ─── Alerts + Distribution Row ─── */}
-        <div className="grid grid-cols-3 gap-5 anim-fade-up delay-5">
-          {/* Critical Alerts */}
-          <div className="col-span-2 glass rounded-2xl p-6">
-            <div className="flex items-center gap-2 mb-5">
-              <AlertCircle className="w-4 h-4 text-[#E31B1B]" strokeWidth={1.8} />
-              <span className="text-[11px] font-display font-bold text-[#918282] tracking-[0.15em] uppercase">Critical Alerts</span>
-            </div>
-            <div className="space-y-3">
-              {[
-                { icon: AlertCircle, color: '#E31B1B', bg: 'rgba(227,27,27,0.08)', border: 'rgba(227,27,27,0.2)', title: 'Database Breach Attempt', sub: 'Vector: Internal API Endpoint · 14:23 UTC' },
-                { icon: AlertTriangle, color: '#CC7A33', bg: 'rgba(204,122,51,0.08)', border: 'rgba(204,122,51,0.2)', title: 'DDoS Threshold Reached', sub: 'Origin: multiple clusters (RU) · 14:21 UTC' },
-                { icon: Info, color: '#5A0B0B', bg: 'rgba(128,0,0,0.06)', border: 'rgba(128,0,0,0.15)', title: 'Unusual Data Exfiltration Volume', sub: 'Destination: 45.231.0.0/16 · 14:18 UTC' },
-              ].map(({ icon: Icon, color, bg, border, title, sub }, i) => (
-                <div key={i} className="flex items-start gap-4 p-4 rounded-xl" style={{ background: bg, border: `1px solid ${border}` }}>
-                  <div className="mt-0.5 w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: color + '20' }}>
-                    <Icon className="w-4 h-4" style={{ color }} strokeWidth={2} />
-                  </div>
-                  <div>
-                    <div className="text-[13px] font-semibold text-white mb-0.5">{title}</div>
-                    <div className="text-[11px] font-mono text-[#665656]">{sub}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+        {/* ALERTS + DISTRIBUTION */}
+        <div className="grid grid-cols-3 gap-6 anim-fade-up delay-5">
+          <Card className="col-span-2">
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-destructive" />
+                <CardTitle className="text-[11px] font-display text-muted-foreground tracking-[0.15em] uppercase">Critical Alerts</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {
+                  logs.slice(0, 3).map((log, i) => (
+                    <div key={i} className="flex items-start gap-4 p-4 rounded-lg border border-border">
+                      <div className="mt-0.5 w-8 h-8 rounded-md flex items-center justify-center shrink-0 bg-background/50">
+                        <AlertCircle className="w-4 h-4 text-destructive" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-semibold text-foreground mb-0.5">
+                          {log.event}
+                        </div>
+                        <div className="text-[11px] font-mono text-muted-foreground">
+                          Source: {log.ip}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                }
 
-          {/* Threat Distribution */}
-          <div className="glass rounded-2xl p-6 flex flex-col">
-            <div className="flex items-center gap-2 mb-6">
-              <Shield className="w-4 h-4 text-[#5A0B0B]" strokeWidth={1.8} />
-              <span className="text-[11px] font-display font-bold text-[#918282] tracking-[0.15em] uppercase">Threat Distribution</span>
-            </div>
+              </div>
+            </CardContent>
+          </Card>
 
-            {/* Donut */}
-            <div className="relative w-36 h-36 mx-auto mb-6">
-              <div
-                className="w-full h-full rounded-full"
-                style={{
-                  background: 'conic-gradient(#E31B1B 0% 40%, #CC7A33 40% 74%, #A39D82 74% 100%)',
-                  boxShadow: '0 0 30px rgba(227,27,27,0.15)',
-                }}
-              >
+          <Card className="flex flex-col">
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-2">
+                <Shield className="w-4 h-4 text-primary" />
+                <CardTitle className="text-[11px] font-display text-muted-foreground tracking-[0.15em] uppercase">Threat Distribution</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="flex-1 flex flex-col justify-between pt-4">
+              <div className="relative w-32 h-32 mx-auto mb-6">
                 <div
-                  className="absolute inset-[14px] rounded-full flex flex-col items-center justify-center"
-                  style={{ background: '#0B0707' }}
+                  className="w-full h-full rounded-full"
+                  style={{
+                    background: 'conic-gradient(var(--color-destructive) 0% 40%, var(--color-amber) 40% 74%, var(--color-primary) 74% 100%)',
+                    boxShadow: '0 0 40px rgba(239,68,68,0.1)',
+                  }}
                 >
-                  <span className="font-display text-[26px] font-bold text-white leading-none">847</span>
-                  <span className="text-[9px] font-display text-[#665656] tracking-[0.15em] uppercase mt-1">K Logs</span>
+                  <div className="absolute inset-[12px] rounded-full flex flex-col items-center justify-center bg-card">
+                    <span className="font-display text-3xl font-bold text-foreground leading-none">{logs.length}</span>
+                    <span className="text-[9px] font-display text-muted-foreground tracking-[0.15em] uppercase mt-1">K Logs</span>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="space-y-3 mt-auto">
-              {[
-                { label: 'Critical / High', color: '#E31B1B', pct: '40%' },
-                { label: 'Medium', color: '#CC7A33', pct: '34%' },
-                { label: 'Low / Info', color: '#A39D82', pct: '26%' },
-              ].map(({ label, color, pct }) => (
-                <div key={label} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-2 h-2 rounded-sm" style={{ background: color, boxShadow: `0 0 6px ${color}88` }}></div>
-                    <span className="text-[12px] text-[#918282]">{label}</span>
+              <div className="space-y-3">
+                {[
+                  {
+                    label: 'Critical / High',
+                    dotCls: 'bg-destructive',
+                    pct: `${Math.round((logs.filter(l => l.level === 'CRITICAL' || l.level === 'HIGH').length / (logs.length || 1)) * 100)}%`
+                  },
+                  {
+                    label: 'Medium',
+                    dotCls: 'bg-amber-500',
+                    pct: `${Math.round((logs.filter(l => l.level === 'MEDIUM').length / (logs.length || 1)) * 100)}%`
+                  },
+                  {
+                    label: 'Low / Info',
+                    dotCls: 'bg-primary',
+                    pct: `${Math.round((logs.filter(l => l.level === 'LOW' || l.level === 'INFO').length / (logs.length || 1)) * 100)}%`
+                  }
+                ].map(({ label, dotCls, pct }) => (
+                  <div key={label} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className={`w-2 h-2 rounded-sm ${dotCls}`}></div>
+                      <span className="text-xs text-muted-foreground">{label}</span>
+                    </div>
+                    <span className="font-display text-xs text-foreground font-bold">{pct}</span>
                   </div>
-                  <span className="font-display text-[12px] text-[#F0EBEB] font-bold">{pct}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </div>
+
       </main>
     </div>
   );
