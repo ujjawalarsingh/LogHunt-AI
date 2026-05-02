@@ -79,76 +79,70 @@ export default function Dashboard() {
     }, 1400);
   };
 
-  const handleFile = (file) => {
+  const handleFile = async (input) => {
+    const file = input?.target?.files ? input.target.files[0] : input;
     if (!file) return;
 
-    // Only process JSON files
-    if (!file.name.endsWith('.json')) {
-      // For non-JSON files (.log, .pcap) just simulate the progress bar
-      setUploadProgress(0);
-      setUploadDone(false);
-      let p = 0;
-      const iv = setInterval(() => {
-        p += Math.random() * 18 + 5;
-        if (p >= 100) {
-          clearInterval(iv);
-          setUploadProgress(100);
-          setTimeout(() => setUploadDone(true), 300);
-        } else {
-          setUploadProgress(Math.min(p, 99));
-        }
-      }, 120);
-      return;
-    }
-
-    // JSON ingestion
     setUploadProgress(0);
     setUploadDone(false);
 
-    const reader = new FileReader();
-
-    reader.onload = (e) => {
-      try {
-        const parsed = JSON.parse(e.target.result);
-        const raw = Array.isArray(parsed) ? parsed : [parsed];
-
-        const mapped = raw.map((entry) => ({
-          ts: entry.timestamp ?? entry.ts ?? '--:--:--.--',
-          ip: entry.ip ?? '0.0.0.0',
-          event: entry.event ?? 'Unknown Event',
-          type: entry.type ?? 'UNKNOWN',
-          level: (entry.level ?? 'INFO').toUpperCase(),
-        }));
-
-        setAllLogs(mapped);
-        setLogs(mapped);
-        setUploadProgress(100);
-        setTimeout(() => setUploadDone(true), 300);
-      } catch {
-        alert('Invalid JSON file. Please upload a valid JSON log file.');
-        setUploadProgress(null);
-        setUploadDone(false);
-      }
-    };
-
-    reader.onerror = () => {
-      alert('Failed to read file. Please try again.');
-      setUploadProgress(null);
-    };
-
-    // Simulate progress while reading
+    // Simulate progress while uploading
     let p = 0;
     const iv = setInterval(() => {
-      p += Math.random() * 20 + 8;
+      p += Math.random() * 10 + 5;
       if (p >= 90) {
         clearInterval(iv);
-        setUploadProgress(90); // hold at 90 until parse completes
+        setUploadProgress(90);
       } else {
         setUploadProgress(Math.min(p, 89));
       }
     }, 100);
 
-    reader.readAsText(file);
+    try {
+      const formData = new FormData();
+      formData.append('files', file);
+
+      const response = await fetch('http://127.0.0.1:8000/api/analyze', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) throw new Error('Network response was not ok');
+      const data = await response.json();
+
+      clearInterval(iv);
+      setUploadProgress(100);
+      setTimeout(() => setUploadDone(true), 300);
+
+      // Map backend response to frontend format
+      const mapped = (data.all_logs || []).map((entry) => ({
+        ts: entry.timestamp.split('T')[1].split('.')[0], // just the time
+        ip: entry.source_ip,
+        event: entry.raw_log.length > 80 ? entry.raw_log.substring(0, 80) + '...' : entry.raw_log,
+        type: entry.threat_type,
+        level: entry.severity ? entry.severity.toUpperCase() : 'INFO',
+      }));
+
+      // Add a summary row if no logs were returned at all
+      if (mapped.length === 0) {
+        mapped.push({
+          ts: new Date().toISOString().split('T')[1].split('.')[0],
+          ip: 'System',
+          event: `Analyzed ${data.total_logs_analyzed} logs. No threats detected.`,
+          type: 'INFO',
+          level: 'INFO'
+        });
+      }
+
+      setAllLogs(mapped);
+      setLogs(mapped);
+    } catch (error) {
+      console.error('Error analyzing file:', error);
+      clearInterval(iv);
+      alert('Failed to analyze file. Is the Python backend running on port 8000?');
+      setUploadProgress(null);
+      setUploadDone(false);
+    }
   };
 
   const handleDrop = (e) => {
@@ -419,14 +413,19 @@ export default function Dashboard() {
               <div className="relative w-32 h-32 mx-auto mb-6">
                 <div
                   className="w-full h-full rounded-full"
-                  style={{
-                    background: 'conic-gradient(var(--color-destructive) 0% 40%, var(--color-amber) 40% 74%, var(--color-primary) 74% 100%)',
-                    boxShadow: '0 0 40px rgba(239,68,68,0.1)',
-                  }}
+                  style={(() => {
+                    const total = logs.length || 1;
+                    const crit = Math.round((logs.filter(l => l.level === 'CRITICAL' || l.level === 'HIGH').length / total) * 100);
+                    const med = Math.round((logs.filter(l => l.level === 'MEDIUM').length / total) * 100);
+                    return {
+                      background: `conic-gradient(var(--color-destructive) 0% ${crit}%, #f59e0b ${crit}% ${crit + med}%, var(--color-primary) ${crit + med}% 100%)`,
+                      boxShadow: '0 0 40px rgba(239,68,68,0.1)'
+                    };
+                  })()}
                 >
                   <div className="absolute inset-[12px] rounded-full flex flex-col items-center justify-center bg-card">
                     <span className="font-display text-3xl font-bold text-foreground leading-none">{logs.length}</span>
-                    <span className="text-[9px] font-display text-muted-foreground tracking-[0.15em] uppercase mt-1">K Logs</span>
+                    <span className="text-[9px] font-display text-muted-foreground tracking-[0.15em] uppercase mt-1">Logs</span>
                   </div>
                 </div>
               </div>
