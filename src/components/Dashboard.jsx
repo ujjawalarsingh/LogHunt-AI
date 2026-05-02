@@ -102,7 +102,11 @@ export default function Dashboard() {
       const formData = new FormData();
       formData.append('files', file);
 
-      const response = await fetch('http://127.0.0.1:8000/api/analyze', {
+      const endpoint = import.meta.env.PROD 
+        ? '/api/analyze' 
+        : 'http://127.0.0.1:8000/api/analyze';
+
+      const response = await fetch(endpoint, {
         method: 'POST',
         body: formData,
       });
