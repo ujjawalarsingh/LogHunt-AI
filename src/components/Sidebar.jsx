@@ -1,4 +1,6 @@
+/* eslint-disable no-unused-vars */
 import { Shield, Radar, LayoutDashboard, FileUp, BarChart2, Settings, Database, Cpu, RefreshCw } from 'lucide-react';
+import { useState } from 'react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';

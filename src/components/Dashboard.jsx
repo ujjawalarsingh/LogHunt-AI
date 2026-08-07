@@ -1,17 +1,11 @@
-import { useState, useRef, useEffect } from 'react';
-import { Search, Upload, AlertTriangle, AlertCircle, Info, Activity, Clock, Shield, Database, ChevronRight, Check } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Search, Upload, AlertTriangle, AlertCircle, Activity, Clock, Shield, Database, ChevronRight, Check } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 
 
-
-const QUERY_MAP = {
-  'failed ssh': "SELECT * FROM logs\nWHERE event = 'failed_login'\n  AND protocol = 'SSH'\n  AND time > NOW() - INTERVAL '24h'\nORDER BY time DESC\nLIMIT 100;",
-  'sql injection': "SELECT * FROM logs\nWHERE event_type = 'SQL_INJECTION'\n  AND severity >= 'HIGH'\nORDER BY time DESC;",
-  'brute force': "SELECT src_ip, COUNT(*) as attempts\nFROM logs\nWHERE event = 'failed_login'\n  AND time > NOW() - INTERVAL '1h'\nGROUP BY src_ip\nHAVING attempts > 5\nORDER BY attempts DESC;",
-};
 
 function LevelBadge({ level }) {
   const v = {
@@ -24,6 +18,7 @@ function LevelBadge({ level }) {
   return <Badge variant={v}>{level}</Badge>;
 }
 
+// eslint-disable-next-line no-unused-vars
 function StatCard({ icon: Icon, label, value, sub, delay, colorCls }) {
   return (
     <Card className={`anim-fade-up delay-${delay}`}>
@@ -54,29 +49,31 @@ export default function Dashboard() {
 
 
 
-  const handleAnalyze = () => {
+  const handleAnalyze = async () => {
     if (!query.trim()) return;
     setAnalyzing(true);
     setGeneratedSQL('');
-    setTimeout(() => {
-      const key = Object.keys(QUERY_MAP).find(k => query.toLowerCase().includes(k));
-      const sql = key
-        ? QUERY_MAP[key]
-        : `SELECT * FROM logs\nWHERE event ILIKE '%${query.replace(/'/g, '')}%'\n  AND time > NOW() - INTERVAL '24h'\nORDER BY time DESC\nLIMIT 200;`;
-      setGeneratedSQL(sql);
-      const lowerQuery = query.toLowerCase();
-
-      if (lowerQuery.includes("sql")) {
-        setLogs(allLogs.filter(l => l.event.toLowerCase().includes("sql")));
-      } else if (lowerQuery.includes("brute")) {
-        setLogs(allLogs.filter(l => l.event.toLowerCase().includes("brute")));
-      } else if (lowerQuery.includes("login")) {
-        setLogs(allLogs.filter(l => l.event.toLowerCase().includes("login")));
-      } else {
-        setLogs(allLogs);
-      }
+    try {
+      const endpoint = import.meta.env.PROD
+        ? '/api/ai/query'
+        : 'http://127.0.0.1:8000/api/ai/query';
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ query })
+      });
+      if (!response.ok) throw new Error('Network response was not ok');
+      const data = await response.json();
+      setGeneratedSQL(data.message || data.sql || 'No data available.');
+      setLogs(allLogs);
+    } catch (error) {
+      console.error('Error generating query:', error);
+      setGeneratedSQL('Error connecting to AI service.');
+    } finally {
       setAnalyzing(false);
-    }, 1400);
+    }
   };
 
   const handleFile = async (input) => {
@@ -86,17 +83,6 @@ export default function Dashboard() {
     setUploadProgress(0);
     setUploadDone(false);
 
-    // Simulate progress while uploading
-    let p = 0;
-    const iv = setInterval(() => {
-      p += Math.random() * 10 + 5;
-      if (p >= 90) {
-        clearInterval(iv);
-        setUploadProgress(90);
-      } else {
-        setUploadProgress(Math.min(p, 89));
-      }
-    }, 100);
 
     try {
       const formData = new FormData();
@@ -114,16 +100,15 @@ export default function Dashboard() {
       if (!response.ok) throw new Error('Network response was not ok');
       const data = await response.json();
 
-      clearInterval(iv);
       setUploadProgress(100);
       setTimeout(() => setUploadDone(true), 300);
 
       // Map backend response to frontend format
       const mapped = (data.all_logs || []).map((entry) => ({
-        ts: entry.timestamp.split('T')[1].split('.')[0], // just the time
-        ip: entry.source_ip,
+        ts: entry.timestamp ? entry.timestamp.split('T')[1]?.split('.')[0] || entry.timestamp : 'N/A',
+        ip: entry.source_ip || 'N/A',
         event: entry.raw_log.length > 80 ? entry.raw_log.substring(0, 80) + '...' : entry.raw_log,
-        type: entry.threat_type,
+        type: entry.threat_type || 'Unknown',
         level: entry.severity ? entry.severity.toUpperCase() : 'INFO',
       }));
 
@@ -142,7 +127,6 @@ export default function Dashboard() {
       setLogs(mapped);
     } catch (error) {
       console.error('Error analyzing file:', error);
-      clearInterval(iv);
       alert('Failed to analyze file. Is the Python backend running on port 8000?');
       setUploadProgress(null);
       setUploadDone(false);
@@ -304,22 +288,14 @@ export default function Dashboard() {
             <div>
               <span className="text-xs text-muted-foreground">Summary:</span>
               <p className="text-sm text-foreground font-medium">
-                {logs.some(l => l.event.toLowerCase().includes("sql"))
-                  ? "Detected SQL injection attempts from multiple sources."
-                  : logs.some(l => l.event.toLowerCase().includes("brute"))
-                    ? "Brute force login attempts detected."
-                    : "No major threats detected."}
+                No insights available. AI summarization is not yet implemented.
               </p>
             </div>
 
             <div>
               <span className="text-xs text-muted-foreground">Recommendation:</span>
               <p className="text-sm text-foreground font-medium">
-                {logs.some(l => l.event.toLowerCase().includes("sql"))
-                  ? "Block suspicious IPs and secure database endpoints."
-                  : logs.some(l => l.event.toLowerCase().includes("brute"))
-                    ? "Enable rate limiting and account lockout policies."
-                    : "System operating normally."}
+                No recommendations available at this time.
               </p>
             </div>
           </CardContent>
@@ -385,21 +361,27 @@ export default function Dashboard() {
             <CardContent>
               <div className="space-y-3">
                 {
-                  logs.slice(0, 3).map((log, i) => (
-                    <div key={i} className="flex items-start gap-4 p-4 rounded-lg border border-border">
-                      <div className="mt-0.5 w-8 h-8 rounded-md flex items-center justify-center shrink-0 bg-background/50">
-                        <AlertCircle className="w-4 h-4 text-destructive" />
-                      </div>
-                      <div>
-                        <div className="text-sm font-semibold text-foreground mb-0.5">
-                          {log.event}
-                        </div>
-                        <div className="text-[11px] font-mono text-muted-foreground">
-                          Source: {log.ip}
-                        </div>
-                      </div>
+                  logs.filter(l => l.level === 'CRITICAL' || l.level === 'HIGH').length === 0 ? (
+                    <div className="text-sm text-muted-foreground p-2">
+                      No critical alerts detected.
                     </div>
-                  ))
+                  ) : (
+                    logs.filter(l => l.level === 'CRITICAL' || l.level === 'HIGH').slice(0, 3).map((log, i) => (
+                      <div key={i} className="flex items-start gap-4 p-4 rounded-lg border border-border">
+                        <div className="mt-0.5 w-8 h-8 rounded-md flex items-center justify-center shrink-0 bg-background/50">
+                          <AlertCircle className="w-4 h-4 text-destructive" />
+                        </div>
+                        <div>
+                          <div className="text-sm font-semibold text-foreground mb-0.5">
+                            {log.event}
+                          </div>
+                          <div className="text-[11px] font-mono text-muted-foreground">
+                            Source: {log.ip}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )
                 }
 
               </div>
