@@ -1,0 +1,6 @@
+<34>Oct 10 14:22:31 webserver01 sshd[1234]: Failed password for admin from 192.168.1.50 port 22 ssh2
+<34>Oct 10 14:22:35 webserver01 sshd[1234]: Failed password for admin from 192.168.1.50 port 22 ssh2
+<34>Oct 10 14:22:39 webserver01 sshd[1234]: Failed password for admin from 192.168.1.50 port 22 ssh2
+<38>Oct 10 14:25:01 webserver01 sudo[5678]: root : USER=root ; COMMAND=/bin/systemctl restart nginx
+<86>Oct 10 14:30:12 dbserver02 mysqld[9012]: Access denied for user 'app'@'10.0.0.5'
+this line is not valid syslog format at all
