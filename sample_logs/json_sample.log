@@ -1,0 +1,6 @@
+{"timestamp": "2024-01-15T10:22:31Z", "source_ip": "192.168.1.10", "username": "alice", "event_type": "login", "severity": "info", "message": "User login successful"}
+{"timestamp": "2024-01-15T10:23:05Z", "source_ip": "192.168.1.10", "username": "alice", "event_type": "login_failed", "severity": "warning", "message": "Invalid password"}
+{"timestamp": "2024-01-15T10:23:09Z", "source_ip": "192.168.1.10", "username": "alice", "event_type": "login_failed", "severity": "warning", "message": "Invalid password"}
+{"timestamp": "2024-01-15T10:25:00Z", "source_ip": "10.0.0.15", "username": "root", "event_type": "privilege_change", "severity": "critical", "message": "User elevated to admin"}
+this is not valid json at all
+{"timestamp": "2024-01-15T10:30:00Z", "message": "missing most fields"}
