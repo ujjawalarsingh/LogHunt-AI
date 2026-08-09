@@ -17,6 +17,13 @@ FAILED_LOGIN_KEYWORDS = [
     "denied"
 ]
 
+# Case-insensitive keywords indicative of a successful login
+SUCCESSFUL_LOGIN_KEYWORDS = [
+    "accepted password",
+    "login successful",
+    "session opened"
+]
+
 def detect_brute_force(db: Session, project_id: int | None = None) -> list[dict]:
     """
     Detects brute force login attempts.
@@ -84,3 +91,74 @@ def detect_brute_force(db: Session, project_id: int | None = None) -> list[dict]
                 i += 1
                 
     return detections
+
+def detect_credential_stuffing(db: Session, project_id: int | None = None) -> list[dict]:
+    """
+    Detects credential stuffing.
+    
+    Criteria:
+    - A successful login
+    - Preceded by 3 or more failed login attempts from the SAME source_ip
+    - Within the 10 minutes immediately before the successful login
+    """
+    # 1. Fetch successful logins
+    success_clauses = [Log.message.ilike(f"%{kw}%") for kw in SUCCESSFUL_LOGIN_KEYWORDS]
+    success_query = db.query(Log).filter(
+        Log.source_ip.isnot(None),
+        Log.timestamp.isnot(None),
+        or_(*success_clauses)
+    )
+    if project_id is not None:
+        success_query = success_query.filter(Log.project_id == project_id)
+        
+    successful_logs = success_query.order_by(asc(Log.timestamp)).all()
+    
+    if not successful_logs:
+        return []
+        
+    # 2. Fetch failed logins (reuse FAILED_LOGIN_KEYWORDS)
+    failed_clauses = [Log.message.ilike(f"%{kw}%") for kw in FAILED_LOGIN_KEYWORDS]
+    failed_query = db.query(Log).filter(
+        Log.source_ip.isnot(None),
+        Log.timestamp.isnot(None),
+        Log.severity.in_(["warning", "error", "critical"]),
+        or_(*failed_clauses)
+    )
+    if project_id is not None:
+        failed_query = failed_query.filter(Log.project_id == project_id)
+        
+    failed_logs = failed_query.order_by(asc(Log.timestamp)).all()
+    
+    # Group failed logs by source_ip
+    failed_by_ip = {}
+    for log in failed_logs:
+        failed_by_ip.setdefault(log.source_ip, []).append(log)
+        
+    detections = []
+    
+    for success_log in successful_logs:
+        ip = success_log.source_ip
+        if ip not in failed_by_ip:
+            continue
+            
+        # Check for 3+ failed logins from this IP within 10 minutes before the success
+        window_start = success_log.timestamp - timedelta(minutes=10)
+        window_end = success_log.timestamp
+        
+        prior_fails = [
+            f for f in failed_by_ip[ip] 
+            if window_start <= f.timestamp <= window_end and f.id != success_log.id
+        ]
+        
+        if len(prior_fails) >= 3:
+            log_ids = [f.id for f in prior_fails] + [success_log.id]
+            detections.append({
+                "source_ip": ip,
+                "count": len(prior_fails),
+                "start_time": prior_fails[0].timestamp,
+                "end_time": success_log.timestamp,
+                "log_ids": log_ids
+            })
+            
+    return detections
+
