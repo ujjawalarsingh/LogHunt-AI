@@ -5,3 +5,5 @@
 10.0.0.8 - admin [10/Oct/2000:14:02:01 -0700] "GET /admin/dashboard HTTP/1.1" 500 128
 this is not a valid apache log line at all
 203.0.113.9 - - [10/Oct/2000:14:05:44 -0700] "GET /' OR 1=1-- HTTP/1.1" 403 64
+192.168.1.5 - - [10/Oct/2000:13:56:18 -0700] "POST /login HTTP/1.1" 401 512
+192.168.1.5 - - [10/Oct/2000:13:56:20 -0700] "POST /login HTTP/1.1" 401 512
