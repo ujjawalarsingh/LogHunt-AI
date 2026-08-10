@@ -2,8 +2,7 @@
 import { Shield, Radar, LayoutDashboard, FileUp, BarChart2, Settings, Database, Cpu, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+
 
 const NAV_ITEMS = [
   { name: 'Dashboard', icon: LayoutDashboard },
@@ -33,22 +32,9 @@ export default function Sidebar({ activePage, onNavigate, onLanding }) {
         </div>
       </button>
 
-      {/* Model status pill */}
-      <div className="mx-4 mt-6 mb-4">
-        <Card className="bg-background/50 border-border/60">
-          <CardContent className="p-3">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[9px] font-display font-bold text-muted-foreground tracking-[0.15em] uppercase">Model Status</span>
-              <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_6px_#22c55e]"></div>
-            </div>
-            <div className="text-[11px] font-display text-foreground font-bold uppercase tracking-wider">LoRA-Fine-Tuned</div>
-            <div className="text-[9px] text-muted-foreground mt-1 font-mono">r=16 · α=32 · 4-bit</div>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* Nav */}
-      <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
+      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+
         {NAV_ITEMS.map(({ name, icon: Icon }) => {
           const active = activePage === name;
           return (
@@ -65,33 +51,6 @@ export default function Sidebar({ activePage, onNavigate, onLanding }) {
         })}
       </nav>
 
-      {/* LoRA Weights toggle */}
-      <div className="mx-4 mb-4">
-        <Card className="bg-card border-border">
-          <CardHeader className="p-4 pb-2">
-            <CardTitle className="text-[9px] font-display font-bold text-muted-foreground tracking-[0.15em] uppercase">LoRA Weights</CardTitle>
-          </CardHeader>
-          <CardContent className="p-4 pt-0 space-y-3">
-            {[
-              { label: 'Q-projection', val: 87 },
-              { label: 'V-projection', val: 73 },
-              { label: 'Output', val: 61 },
-            ].map(({ label, val }) => (
-              <div key={label}>
-                <div className="flex justify-between text-[9px] font-mono text-muted-foreground mb-1.5">
-                  <span>{label}</span><span className="text-foreground">{val}%</span>
-                </div>
-                <div className="h-1 bg-background rounded-full overflow-hidden border border-border/50">
-                  <div
-                    className="h-full rounded-full bg-primary"
-                    style={{ width: `${val}%` }}
-                  ></div>
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      </div>
 
       {/* New Scan */}
       <div className="px-4 pb-6">

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Radar, Zap, Search, TrendingUp, Lock, Globe, ChevronRight, Terminal, ArrowRight } from 'lucide-react';
+import { Radar, Zap, Search, TrendingUp, Terminal, ArrowRight, ChevronRight } from 'lucide-react';
+
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -30,9 +31,9 @@ const FEATURES = [
     borderCls: 'border-primary/20 hover:border-primary/50'
   },
   {
-    icon: Globe,
-    title: 'Threat Intelligence Fusion',
-    desc: 'Correlates internal telemetry with live threat feeds. Context your analysts need, instantly.',
+    icon: TrendingUp,
+    title: 'Rule-Based Threat Detection',
+    desc: 'Detects brute force, credential stuffing, and privilege escalation using a pattern-matching rule engine — with a LoRA classifier planned for automated threat categorization.',
     accentCls: 'text-destructive',
     bgCls: 'bg-destructive/10',
     borderCls: 'border-destructive/20 hover:border-destructive/50'
@@ -45,22 +46,10 @@ const FEATURES = [
     bgCls: 'bg-primary/10',
     borderCls: 'border-primary/20 hover:border-primary/50'
   },
-  {
-    icon: Lock,
-    title: 'Air-Gap Ready',
-    desc: 'All inference runs on-premises. No telemetry leaves the perimeter. SOC2 Type II controls baked in.',
-    accentCls: 'text-green-500',
-    bgCls: 'bg-green-500/10',
-    borderCls: 'border-green-500/20 hover:border-green-500/50'
-  },
 ];
 
-const STATS = [
-  { value: '< 80ms', label: 'Avg. Inference Time' },
-  { value: '99.3%', label: 'Threat Detection Rate' },
-  { value: '0.2%', label: 'False Positive Rate' },
-  { value: '∞', label: 'Log Sources' },
-];
+
+
 
 function useTyping(lines, speed = 55) {
   const [display, setDisplay] = useState('');
@@ -127,7 +116,7 @@ export default function LandingPage({ onEnter }) {
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-primary/20 bg-primary/5 mb-8 anim-fade-up">
             <div className="w-1.5 h-1.5 rounded-full bg-primary relative pulse-dot"></div>
             <span className="text-[11px] font-display font-bold text-primary tracking-[0.15em] uppercase">
-              LoRA v2.1 · System Online
+              In Active Development
             </span>
           </div>
 
@@ -150,15 +139,7 @@ export default function LandingPage({ onEnter }) {
             </Button>
           </div>
 
-          {/* Stats row */}
-          <div className="grid grid-cols-4 gap-0 mt-16 border border-border rounded-xl bg-card/30 backdrop-blur-sm overflow-hidden anim-fade-up delay-4">
-            {STATS.map((s, i) => (
-              <div key={i} className={`px-5 py-5 ${i < STATS.length - 1 ? 'border-r border-border' : ''}`}>
-                <div className="font-display text-xl font-bold text-primary text-glow-cyan">{s.value}</div>
-                <div className="text-[10px] text-muted-foreground mt-1.5 font-bold uppercase tracking-wider">{s.label}</div>
-              </div>
-            ))}
-          </div>
+
         </div>
 
         {/* Right: Terminal */}
