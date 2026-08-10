@@ -24,6 +24,17 @@ SUCCESSFUL_LOGIN_KEYWORDS = [
     "session opened"
 ]
 
+# Case-insensitive keywords indicative of privilege escalation
+PRIVILEGE_ESCALATION_KEYWORDS = [
+    "sudo",
+    "elevated to admin",
+    "role_change",
+    "user=root",
+    "privilege",
+    "escalat"
+]
+
+
 def detect_brute_force(db: Session, project_id: int | None = None) -> list[dict]:
     """
     Detects brute force login attempts.
@@ -161,4 +172,46 @@ def detect_credential_stuffing(db: Session, project_id: int | None = None) -> li
             })
             
     return detections
+
+def detect_privilege_escalation(db: Session, project_id: int | None = None) -> list[dict]:
+    """
+    Detects privilege escalation.
+    
+    Criteria:
+    - Log message or event_type matches privilege escalation keywords
+    - Username is present
+    - Single log line is sufficient (no time window aggregation)
+    """
+    clauses = [Log.message.ilike(f"%{kw}%") for kw in PRIVILEGE_ESCALATION_KEYWORDS]
+    clauses.extend([Log.event_type.ilike(f"%{kw}%") for kw in PRIVILEGE_ESCALATION_KEYWORDS])
+    
+    query = db.query(Log).filter(
+        Log.username.isnot(None),
+        Log.timestamp.isnot(None),
+        or_(*clauses)
+    )
+    
+    if project_id is not None:
+        query = query.filter(Log.project_id == project_id)
+        
+    logs = query.order_by(asc(Log.timestamp)).all()
+    
+    detections = []
+    
+    for log in logs:
+        # Format the identity string for the alert writer
+        identity = log.username
+        if log.source_ip:
+            identity = f"{log.username} (IP: {log.source_ip})"
+            
+        detections.append({
+            "source_ip": identity,  # Overloading source_ip field for alert_writer compatibility
+            "count": 1,
+            "start_time": log.timestamp,
+            "end_time": log.timestamp,
+            "log_ids": [log.id]
+        })
+        
+    return detections
+
 

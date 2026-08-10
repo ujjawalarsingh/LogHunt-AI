@@ -117,6 +117,26 @@ def _extract_ip(message: str) -> Optional[str]:
     return m.group(1) if m else None
 
 
+_USERNAME_FOR_RE = re.compile(r"for\s+(\S+)\s+from")
+_USERNAME_SUDO_RE = re.compile(r"^(\S+)\s*:\s*USER=")
+
+def _extract_username(message: str) -> Optional[str]:
+    """
+    Search the message body for a username matching specific patterns.
+    - "for <username> from"
+    - "<username> : USER="
+    """
+    m = _USERNAME_FOR_RE.search(message)
+    if m:
+        return m.group(1)
+        
+    m = _USERNAME_SUDO_RE.search(message)
+    if m:
+        return m.group(1)
+        
+    return None
+
+
 class SyslogParser(BaseParser):
     """
     Parses RFC 3164 BSD syslog lines.
@@ -164,7 +184,7 @@ class SyslogParser(BaseParser):
                 message=message_body,
                 # These fields are not present in RFC 3164
                 destination_ip=None,
-                username=None,
+                username=_extract_username(message_body),
             ))
 
         return entries

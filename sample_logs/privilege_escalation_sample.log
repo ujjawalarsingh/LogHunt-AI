@@ -1,0 +1,3 @@
+<38>Oct 10 16:00:01 dbserver02 sudo[3001]: alice : USER=root ; COMMAND=/bin/bash
+<38>Oct 10 16:00:05 dbserver02 sudo[3001]: alice : USER=root ; COMMAND=/usr/bin/passwd root
+{"timestamp": "2026-10-10T16:05:00Z", "source_ip": "10.0.0.20", "username": "bob", "event_type": "role_change", "severity": "critical", "message": "User bob elevated to admin role"}
