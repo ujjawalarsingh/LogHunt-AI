@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import upload, dashboard
+from app.api import upload, dashboard, classify, query
 
 app = FastAPI(title="LogHunt AI", version="0.1.0")
 
@@ -20,3 +20,5 @@ def health():
 
 app.include_router(upload.router)
 app.include_router(dashboard.router)
+app.include_router(classify.router)
+app.include_router(query.router)

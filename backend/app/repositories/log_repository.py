@@ -29,3 +29,8 @@ def bulk_insert_logs(db: Session, entries: list[ParsedLogEntry], project_id: int
     db.commit()
     
     return len(logs)
+
+
+def get_log_by_id(db: Session, log_id: int) -> Log | None:
+    """Return a single Log row by primary key, or None if not found."""
+    return db.query(Log).filter(Log.id == log_id).first()
