@@ -3,6 +3,7 @@ import LandingPage from './components/LandingPage';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import LLMAnalysis from './components/LLMAnalysis';
+import Analytics from './components/Analytics';
 
 function App() {
   const [view, setView] = useState('landing'); // 'landing' | 'app'
@@ -21,6 +22,7 @@ function App() {
       />
       {page === 'Dashboard' && <Dashboard />}
       {page === 'LLM Analysis' && <LLMAnalysis />}
+      {page === 'Analytics' && <Analytics />}
     </div>
   );
 }

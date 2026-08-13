@@ -25,6 +25,7 @@ class DashboardSummary(BaseModel):
     total_alerts: int
     alerts_by_type: dict[str, int]
     alerts_by_severity: dict[str, int]
+    alerts_over_time: dict[str, int]
     recent_alerts: list[RecentAlertItem]
 
 
@@ -36,6 +37,7 @@ class LogListItem(BaseModel):
     event_type: Optional[str]
     severity: Optional[str]
     message: Optional[str]
+    raw_log: str
     source_format: Optional[str]
     project_id: Optional[int]
 

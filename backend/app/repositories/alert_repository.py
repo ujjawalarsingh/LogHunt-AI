@@ -85,3 +85,15 @@ def get_recent_alerts(db: Session, limit: int = 5) -> list[Alert]:
         .limit(limit)
         .all()
     )
+
+
+def get_alerts_over_time(db: Session) -> dict[str, int]:
+    """Returns a count of alerts grouped by YYYY-MM-DD date."""
+    rows = db.query(Alert.created_at).all()
+    counts = {}
+    for row in rows:
+        dt = row[0]
+        if dt:
+            d_str = dt.strftime("%Y-%m-%d")
+            counts[d_str] = counts.get(d_str, 0) + 1
+    return counts

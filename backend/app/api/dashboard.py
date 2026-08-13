@@ -32,6 +32,7 @@ def get_dashboard(db: Session = Depends(get_db)):
     total_alerts = alert_repository.count_alerts(db)
     alerts_by_type = alert_repository.get_alerts_by_type(db)
     alerts_by_severity = alert_repository.get_alerts_by_severity(db)
+    alerts_over_time = alert_repository.get_alerts_over_time(db)
     recent = alert_repository.get_recent_alerts(db, limit=5)
 
     return DashboardSummary(
@@ -39,6 +40,7 @@ def get_dashboard(db: Session = Depends(get_db)):
         total_alerts=total_alerts,
         alerts_by_type=alerts_by_type,
         alerts_by_severity=alerts_by_severity,
+        alerts_over_time=alerts_over_time,
         recent_alerts=recent,
     )
 

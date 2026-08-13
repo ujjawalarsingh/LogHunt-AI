@@ -133,7 +133,7 @@ export default function LLMAnalysis() {
           <div className="grid grid-cols-2 gap-6">
             
             {/* INPUT CARD */}
-            <Card className="flex flex-col">
+            <Card className="flex flex-col h-full">
               <CardHeader className="pb-3 border-b border-border/50">
                 <CardTitle className="text-[11px] font-display text-muted-foreground tracking-[0.15em] uppercase">Select Log</CardTitle>
               </CardHeader>
@@ -177,7 +177,7 @@ export default function LLMAnalysis() {
             </Card>
 
             {/* OUTPUT CARD */}
-            <Card className="flex flex-col bg-card/30 border-dashed">
+            <Card className="flex flex-col h-full bg-card/30 border-dashed">
               <CardHeader className="pb-3 border-b border-border/50">
                 <CardTitle className="text-[11px] font-display text-muted-foreground tracking-[0.15em] uppercase">Model Output</CardTitle>
               </CardHeader>
@@ -206,7 +206,7 @@ export default function LLMAnalysis() {
                 {classificationResult && !classifying && (
                   <div className="flex flex-col h-full">
                     
-                    <div className="flex items-start justify-between mb-6">
+                    <div className="flex items-start justify-between mb-8">
                       <div>
                         <div className="text-[10px] font-display text-muted-foreground uppercase tracking-widest mb-1">Final Label</div>
                         <div className="flex items-center gap-3">
