@@ -64,3 +64,15 @@ export async function uploadFile(file, projectId = null) {
   }
   return res.json();
 }
+
+/**
+ * POST /query
+ * @param {string} question 
+ */
+export function runQuery(question) {
+  return request('/query', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ question })
+  });
+}

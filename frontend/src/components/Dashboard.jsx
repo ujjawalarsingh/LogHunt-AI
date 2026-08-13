@@ -4,7 +4,8 @@ import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { getDashboard, uploadFile } from '../lib/api';
+import { getDashboard, uploadFile, runQuery } from '../lib/api';
+
 
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -61,9 +62,12 @@ export default function Dashboard() {
 
   const [query, setQuery] = useState('');
   const [generatedSQL, setGeneratedSQL] = useState('');
+  const [queryResults, setQueryResults] = useState(null);
+  const [queryError, setQueryError] = useState(null);
   const [analyzing, setAnalyzing] = useState(false);
 
   const [dragOver, setDragOver] = useState(false);
+
   const [uploadProgress, setUploadProgress] = useState(null);
   const [uploadDone, setUploadDone] = useState(false);
   const [uploadError, setUploadError] = useState(null);
@@ -118,12 +122,22 @@ export default function Dashboard() {
     if (file) handleFile(file);
   };
 
-  // ── AI query (placeholder — no real endpoint yet) ──
+  // ── AI query (NL2SQL) ──
   const handleAnalyze = async () => {
     if (!query.trim()) return;
     setAnalyzing(true);
-    setGeneratedSQL('-- AI Query engine not yet wired in (Phase 8).');
-    setAnalyzing(false);
+    setGeneratedSQL('');
+    setQueryError(null);
+    setQueryResults(null);
+    try {
+      const res = await runQuery(query);
+      setGeneratedSQL(res.sql);
+      setQueryResults(res.results);
+    } catch (e) {
+      setQueryError(e.message);
+    } finally {
+      setAnalyzing(false);
+    }
   };
 
   // ── Derived values from dashboard data ──
@@ -266,8 +280,9 @@ export default function Dashboard() {
               </div>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col">
-              <p className="text-sm text-foreground/80 mb-4">Ask in natural language. (Full AI query engine coming in Phase 8.)</p>
+              <p className="text-sm text-foreground/80 mb-4">Ask in natural language to query your database.</p>
               <div className="flex gap-2 mb-3">
+
                 <Input
                   value={query}
                   onChange={e => setQuery(e.target.value)}
@@ -304,18 +319,55 @@ export default function Dashboard() {
               </div>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col">
-              <div className="flex-1 bg-background border border-border rounded-lg p-4 font-mono text-[11px] leading-[1.8] min-h-[140px] overflow-auto">
+              <div className="flex-1 bg-background border border-border rounded-lg p-4 font-mono text-[11px] leading-[1.8] min-h-[220px] max-h-[300px] flex flex-col">
                 {analyzing ? (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <span className="animate-pulse">▍</span> Generating query…
+                  <div className="flex items-center justify-center gap-2 text-muted-foreground h-full">
+                    <span className="animate-pulse">▍</span> Translating to SQL and querying DB…
+                  </div>
+                ) : queryError ? (
+                  <div className="flex flex-col items-center justify-center text-center h-full text-destructive">
+                    <AlertTriangle className="w-5 h-5 mb-2" />
+                    <span className="font-sans font-semibold">Query Failed</span>
+                    <span className="opacity-80 mt-1 max-w-sm">{queryError}</span>
                   </div>
                 ) : !generatedSQL ? (
-                  <span className="text-muted-foreground/50">// SQL will appear here after analysis</span>
+                  <div className="flex items-center justify-center h-full">
+                    <span className="text-muted-foreground/50">// SQL and results will appear here</span>
+                  </div>
                 ) : (
-                  <pre className="text-primary whitespace-pre-wrap">{generatedSQL}</pre>
+                  <>
+                    <pre className="text-primary whitespace-pre-wrap shrink-0 pb-3 border-b border-border/50 mb-3">{generatedSQL}</pre>
+                    <div className="flex-1 overflow-auto">
+                      {queryResults && queryResults.length > 0 ? (
+                        <table className="w-full text-left border-collapse">
+                          <thead>
+                            <tr>
+                              {Object.keys(queryResults[0]).map((k) => (
+                                <th key={k} className="p-2 border-b border-border/50 text-muted-foreground font-semibold uppercase">{k}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {queryResults.map((r, i) => (
+                              <tr key={i} className="hover:bg-muted/30">
+                                {Object.values(r).map((v, j) => (
+                                  <td key={j} className="p-2 border-b border-border/10 text-foreground/80 truncate max-w-[200px]" title={String(v)}>
+                                    {String(v ?? 'NULL')}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      ) : (
+                        <div className="text-muted-foreground/50 italic py-2">No rows returned.</div>
+                      )}
+                    </div>
+                  </>
                 )}
               </div>
             </CardContent>
+
           </Card>
         </div>
 
