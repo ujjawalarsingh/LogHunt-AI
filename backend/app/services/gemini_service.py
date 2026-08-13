@@ -15,6 +15,9 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from dotenv import load_dotenv
 
+from app.repositories.alert_repository import get_alert_by_id
+
+
 load_dotenv()  # Ensure .env is loaded (especially for tests)
 
 logger = logging.getLogger(__name__)
@@ -154,4 +157,55 @@ def natural_language_to_sql(question: str, db: Session) -> dict[str, Any]:
         logger.error(f"Database execution error: {e}")
         # Return a generic database error to avoid leaking exact internal DB errors to user
         raise ValueError(f"Failed to execute generated SQL query: {e}")
+
+
+def explain_alert(alert_id: int, db: Session) -> str:
+    """
+    Given an alert_id, fetches the real alert and triggering log from the database,
+    and asks Gemini to explain what happened in plain English without inventing facts.
+    """
+    alert = get_alert_by_id(db, alert_id)
+    if not alert:
+        raise ValueError(f"Alert with id {alert_id} not found.")
+
+    log = alert.log
+    if not log:
+        raise ValueError(f"Alert {alert_id} has no associated log data.")
+
+    # Construct the factual context from the database
+    context = (
+        "You are an expert security analyst. Please explain the following security alert "
+        "in plain, accessible English. Focus on what happened and why it matters.\n\n"
+        "CRITICAL RULES:\n"
+        "- ONLY use the facts provided below. Do not invent IP addresses, usernames, timestamps, or attack techniques that are not explicitly present.\n"
+        "- Do not guess the outcome if it is not stated.\n\n"
+        "--- SECURITY ALERT DATA ---\n"
+        f"Alert Type: {alert.alert_type}\n"
+        f"Severity: {alert.severity}\n"
+        f"Detection Source: {alert.source}\n"
+        f"Confidence Score: {alert.confidence_score if alert.confidence_score is not None else 'N/A'}\n"
+        f"System Description: {alert.description}\n"
+        f"Alert Created At: {alert.created_at}\n\n"
+        "--- TRIGGERING LOG LINE ---\n"
+        f"Log Timestamp: {log.timestamp or 'N/A'}\n"
+        f"Source IP: {log.source_ip or 'N/A'}\n"
+        f"Destination IP: {log.destination_ip or 'N/A'}\n"
+        f"Username: {log.username or 'N/A'}\n"
+        f"Event Type: {log.event_type or 'N/A'}\n"
+        f"Raw Log Text: {log.raw_log}\n"
+        "---------------------------\n\n"
+        "Explanation:"
+    )
+
+    try:
+        response = client.models.generate_content(
+            model="gemini-3.5-flash",
+            contents=context,
+        )
+        return response.text.strip()
+    except Exception as e:
+        logger.error(f"Gemini API error during explain_alert: {e}")
+        raise RuntimeError("Failed to generate alert explanation using Gemini.") from e
+
+
 

@@ -10,6 +10,10 @@ from app.models.alert import Alert
 from app.models.log import Log
 
 
+def get_alert_by_id(db: Session, alert_id: int) -> Alert | None:
+    return db.query(Alert).filter(Alert.id == alert_id).first()
+
+
 def get_alerts(
     db: Session,
     project_id: int | None = None,
