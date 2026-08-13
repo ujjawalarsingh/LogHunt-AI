@@ -76,3 +76,11 @@ export function runQuery(question) {
     body: JSON.stringify({ question })
   });
 }
+
+/**
+ * GET /alerts/{alert_id}/explain
+ * @param {number} alertId 
+ */
+export function explainAlert(alertId) {
+  return request(`/alerts/${alertId}/explain`);
+}

@@ -4,7 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { getDashboard, uploadFile, runQuery } from '../lib/api';
+import { getDashboard, uploadFile, runQuery, explainAlert } from '../lib/api';
 
 
 
@@ -73,6 +73,8 @@ export default function Dashboard() {
   const [uploadError, setUploadError] = useState(null);
   const [uploadResult, setUploadResult] = useState(null);
 
+  const [alertExplanations, setAlertExplanations] = useState({});
+
   const fileRef = useRef();
 
   // ── Fetch dashboard data ──
@@ -140,7 +142,39 @@ export default function Dashboard() {
     }
   };
 
+  // ── AI Explanation ──
+  const handleExplain = async (alertId) => {
+    if (alertExplanations[alertId]) {
+      // Toggle off if already open
+      setAlertExplanations(prev => {
+        const next = { ...prev };
+        delete next[alertId];
+        return next;
+      });
+      return;
+    }
+
+    setAlertExplanations(prev => ({
+      ...prev,
+      [alertId]: { loading: true }
+    }));
+
+    try {
+      const res = await explainAlert(alertId);
+      setAlertExplanations(prev => ({
+        ...prev,
+        [alertId]: { loading: false, text: res.explanation }
+      }));
+    } catch (e) {
+      setAlertExplanations(prev => ({
+        ...prev,
+        [alertId]: { loading: false, error: e.message }
+      }));
+    }
+  };
+
   // ── Derived values from dashboard data ──
+
   const totalLogs = dashData?.total_logs ?? 0;
   const totalAlerts = dashData?.total_alerts ?? 0;
   const alertsByType = dashData?.alerts_by_type ?? {};
@@ -438,20 +472,45 @@ export default function Dashboard() {
                   </div>
                 ) : (
                   recentAlerts.map((alert) => (
-                    <div key={alert.id} className="flex items-start gap-4 p-4 rounded-lg border border-border">
-                      <div className="mt-0.5 w-8 h-8 rounded-md flex items-center justify-center shrink-0 bg-background/50">
-                        <AlertCircle className="w-4 h-4 text-destructive" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                          <span className="text-sm font-semibold text-foreground">{alertTypeLabel(alert.alert_type)}</span>
-                          <SeverityBadge severity={alert.severity} />
+                    <div key={alert.id} className="flex flex-col p-4 rounded-lg border border-border">
+                      <div className="flex items-start gap-4">
+                        <div className="mt-0.5 w-8 h-8 rounded-md flex items-center justify-center shrink-0 bg-background/50">
+                          <AlertCircle className="w-4 h-4 text-destructive" />
                         </div>
-                        <div className="text-[11px] text-muted-foreground font-mono truncate">{alert.description}</div>
-                        <div className="text-[10px] text-muted-foreground/60 mt-0.5">{fmt(alert.created_at)} · Log #{alert.log_id}</div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                            <span className="text-sm font-semibold text-foreground">{alertTypeLabel(alert.alert_type)}</span>
+                            <SeverityBadge severity={alert.severity} />
+                          </div>
+                          <div className="text-[11px] text-muted-foreground font-mono truncate">{alert.description}</div>
+                          <div className="text-[10px] text-muted-foreground/60 mt-0.5">{fmt(alert.created_at)} · Log #{alert.log_id}</div>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={() => handleExplain(alert.id)} className="shrink-0 text-xs h-7 px-3">
+                          {alertExplanations[alert.id] ? 'Close' : 'Explain'}
+                        </Button>
                       </div>
+
+                      {alertExplanations[alert.id] && (
+                        <div className="mt-3 pt-3 border-t border-border/50 text-sm anim-fade-up">
+                          {alertExplanations[alert.id].loading ? (
+                            <div className="flex items-center gap-2 text-muted-foreground py-2">
+                              <span className="animate-spin">⟳</span> Analyzing incident with AI...
+                            </div>
+                          ) : alertExplanations[alert.id].error ? (
+                            <div className="text-destructive flex items-center gap-2 py-2">
+                              <AlertTriangle className="w-4 h-4" />
+                              {alertExplanations[alert.id].error}
+                            </div>
+                          ) : (
+                            <div className="text-foreground/90 leading-relaxed space-y-2 whitespace-pre-wrap font-sans text-xs">
+                              {alertExplanations[alert.id].text}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))
+
                 )}
               </div>
             </CardContent>
