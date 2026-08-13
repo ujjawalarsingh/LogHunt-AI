@@ -6,7 +6,6 @@ import { Button } from './ui/button';
 
 const NAV_ITEMS = [
   { name: 'Dashboard', icon: LayoutDashboard },
-  { name: 'Log Ingestion', icon: FileUp },
   { name: 'LLM Analysis', icon: Cpu },
   { name: 'SQL Query Lab', icon: Database },
   { name: 'Analytics', icon: BarChart2 },

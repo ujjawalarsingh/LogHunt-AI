@@ -2,6 +2,7 @@ import { useState } from 'react';
 import LandingPage from './components/LandingPage';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
+import LLMAnalysis from './components/LLMAnalysis';
 
 function App() {
   const [view, setView] = useState('landing'); // 'landing' | 'app'
@@ -18,7 +19,8 @@ function App() {
         onNavigate={setPage}
         onLanding={() => setView('landing')}
       />
-      <Dashboard />
+      {page === 'Dashboard' && <Dashboard />}
+      {page === 'LLM Analysis' && <LLMAnalysis />}
     </div>
   );
 }

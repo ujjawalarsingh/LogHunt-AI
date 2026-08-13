@@ -208,4 +208,51 @@ def explain_alert(alert_id: int, db: Session) -> str:
         raise RuntimeError("Failed to generate alert explanation using Gemini.") from e
 
 
+def recommend_mitigation(alert_id: int, db: Session) -> str:
+    """
+    Given an alert_id, fetches the real alert from the database,
+    and asks Gemini to recommend concrete, actionable mitigation steps.
+    """
+    alert = get_alert_by_id(db, alert_id)
+    if not alert:
+        raise ValueError(f"Alert with id {alert_id} not found.")
+
+    log = alert.log
+    if not log:
+        raise ValueError(f"Alert {alert_id} has no associated log data.")
+
+    # Construct the factual context from the database
+    context = (
+        "You are an expert security analyst. Please provide concrete, actionable "
+        "mitigation steps and security recommendations for the following security alert.\n\n"
+        "CRITICAL RULES:\n"
+        "- Base your recommendations on the specific Alert Type and details provided.\n"
+        "- Do not make assumptions about the environment (e.g. don't say 'reconfigure your firewall' unless the alert specifically involves firewall evasion).\n"
+        "- Provide specific, technical remediation steps rather than generic 'improve your security posture' advice.\n\n"
+        "--- SECURITY ALERT DATA ---\n"
+        f"Alert Type: {alert.alert_type}\n"
+        f"Severity: {alert.severity}\n"
+        f"Detection Source: {alert.source}\n"
+        f"System Description: {alert.description}\n"
+        f"Alert Created At: {alert.created_at}\n\n"
+        "--- TRIGGERING LOG SUMMARY ---\n"
+        f"Username (if known): {log.username or 'N/A'}\n"
+        f"Source IP (if known): {log.source_ip or 'N/A'}\n"
+        f"Event Type: {log.event_type or 'N/A'}\n"
+        f"Raw Log Text: {log.raw_log}\n"
+        "---------------------------\n\n"
+        "Recommendations:"
+    )
+
+    try:
+        response = client.models.generate_content(
+            model="gemini-3.5-flash",
+            contents=context,
+        )
+        return response.text.strip()
+    except Exception as e:
+        logger.error(f"Gemini API error during recommend_mitigation: {e}")
+        raise RuntimeError("Failed to generate mitigation recommendations using Gemini.") from e
+
+
 

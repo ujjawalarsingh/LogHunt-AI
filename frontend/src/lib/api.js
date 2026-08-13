@@ -84,3 +84,15 @@ export function runQuery(question) {
 export function explainAlert(alertId) {
   return request(`/alerts/${alertId}/explain`);
 }
+
+/**
+ * POST /classify
+ * @param {number} log_id 
+ */
+export function classifyLog(logId) {
+  return request('/classify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ log_id: logId })
+  });
+}
