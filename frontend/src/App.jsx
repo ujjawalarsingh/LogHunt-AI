@@ -5,6 +5,7 @@ import Dashboard from './components/Dashboard';
 import LLMAnalysis from './components/LLMAnalysis';
 import Analytics from './components/Analytics';
 import Settings from './components/Settings';
+import QueryLab from './components/QueryLab';
 
 function App() {
   const [view, setView] = useState('landing'); // 'landing' | 'app'
@@ -22,6 +23,7 @@ function App() {
         onLanding={() => setView('landing')}
       />
       {page === 'Dashboard' && <Dashboard />}
+      {page === 'SQL Query Lab' && <QueryLab />}
       {page === 'LLM Analysis' && <LLMAnalysis />}
       {page === 'Analytics' && <Analytics />}
       {page === 'Settings' && <Settings />}
