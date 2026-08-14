@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_, asc
 
 from app.models.log import Log
+from app.services.settings import get_settings
 
 # Case-insensitive keywords indicative of a failed login
 FAILED_LOGIN_KEYWORDS = [
@@ -40,9 +41,11 @@ def detect_brute_force(db: Session, project_id: int | None = None) -> list[dict]
     Detects brute force login attempts.
     
     Criteria:
-    - 5 or more failed login logs from the same source_ip
-    - Within a 5-minute rolling window
+    - Dynamic threshold from settings (default 5) or more failed login logs from the same source_ip
+    - Within a dynamic rolling window (default 5 mins)
     """
+    config = get_settings()
+    
     # 1. Base query: fetch potential failed logins
     query = db.query(Log).filter(
         Log.severity.in_(["warning", "error", "critical"]),
@@ -67,18 +70,18 @@ def detect_brute_force(db: Session, project_id: int | None = None) -> list[dict]
     for log in potential_logs:
         logs_by_ip.setdefault(log.source_ip, []).append(log)
         
-    # 3. Detect 5-minute rolling windows with >= 5 attempts
+    # 3. Detect rolling windows
     detections = []
     
     for ip, logs in logs_by_ip.items():
         n = len(logs)
-        if n < 5:
+        if n < config.brute_force_threshold:
             continue
             
         i = 0
-        while i <= n - 5:
+        while i <= n - config.brute_force_threshold:
             start_log = logs[i]
-            window_end_time = start_log.timestamp + timedelta(minutes=5)
+            window_end_time = start_log.timestamp + timedelta(minutes=config.brute_force_window_minutes)
             
             # Find all logs in this 5 minute window
             window_logs = [start_log]
@@ -87,7 +90,7 @@ def detect_brute_force(db: Session, project_id: int | None = None) -> list[dict]
                 window_logs.append(logs[j])
                 j += 1
                 
-            if len(window_logs) >= 5:
+            if len(window_logs) >= config.brute_force_threshold:
                 # We have a detection
                 detections.append({
                     "source_ip": ip,
@@ -109,9 +112,11 @@ def detect_credential_stuffing(db: Session, project_id: int | None = None) -> li
     
     Criteria:
     - A successful login
-    - Preceded by 3 or more failed login attempts from the SAME source_ip
-    - Within the 10 minutes immediately before the successful login
+    - Preceded by threshold (default 3) failed login attempts from the SAME source_ip
+    - Within the configured minutes (default 10) immediately before the successful login
     """
+    config = get_settings()
+    
     # 1. Fetch successful logins
     success_clauses = [Log.message.ilike(f"%{kw}%") for kw in SUCCESSFUL_LOGIN_KEYWORDS]
     success_query = db.query(Log).filter(
@@ -152,8 +157,8 @@ def detect_credential_stuffing(db: Session, project_id: int | None = None) -> li
         if ip not in failed_by_ip:
             continue
             
-        # Check for 3+ failed logins from this IP within 10 minutes before the success
-        window_start = success_log.timestamp - timedelta(minutes=10)
+        # Check for failed logins from this IP within window before the success
+        window_start = success_log.timestamp - timedelta(minutes=config.credential_stuffing_window_minutes)
         window_end = success_log.timestamp
         
         prior_fails = [
@@ -161,7 +166,7 @@ def detect_credential_stuffing(db: Session, project_id: int | None = None) -> li
             if window_start <= f.timestamp <= window_end and f.id != success_log.id
         ]
         
-        if len(prior_fails) >= 3:
+        if len(prior_fails) >= config.credential_stuffing_threshold:
             log_ids = [f.id for f in prior_fails] + [success_log.id]
             detections.append({
                 "source_ip": ip,

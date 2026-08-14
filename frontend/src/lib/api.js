@@ -96,3 +96,20 @@ export function classifyLog(logId) {
     body: JSON.stringify({ log_id: logId })
   });
 }
+
+/** GET /settings */
+export function getSettings() {
+  return request('/settings');
+}
+
+/**
+ * POST /settings
+ * @param {Object} newSettings 
+ */
+export function updateSettings(newSettings) {
+  return request('/settings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(newSettings)
+  });
+}

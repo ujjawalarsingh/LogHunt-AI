@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import upload, dashboard, classify, query, explain, recommend
+from app.api import upload, dashboard, classify, query, explain, recommend, settings
 
 app = FastAPI(title="LogHunt AI", version="0.1.0")
 
@@ -24,3 +24,4 @@ app.include_router(classify.router)
 app.include_router(query.router)
 app.include_router(explain.router)
 app.include_router(recommend.router)
+app.include_router(settings.router)
