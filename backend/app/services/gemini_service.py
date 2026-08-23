@@ -6,6 +6,7 @@ against the logs and alerts schema, using Gemini.
 """
 import logging
 import re
+import time
 from typing import Any
 
 from google import genai
@@ -25,6 +26,18 @@ logger = logging.getLogger(__name__)
 # Initialize the Gemini client. It automatically picks up GEMINI_API_KEY 
 # from the environment (loaded by python-dotenv in the app).
 client = genai.Client()
+GEMINI_MODEL = "gemini-flash-latest"
+
+def _generate_content_with_retry(model: str, contents: str) -> Any:
+    """Helper to retry Gemini API calls once on 503 errors."""
+    try:
+        return client.models.generate_content(model=model, contents=contents)
+    except Exception as e:
+        if "503" in str(e):
+            logger.warning("Gemini API returned 503. Retrying in 2 seconds...")
+            time.sleep(2)
+            return client.models.generate_content(model=model, contents=contents)
+        raise e
 
 
 _SCHEMA_PROMPT = """You are a PostgreSQL expert assisting a security analyst.
@@ -114,8 +127,8 @@ def natural_language_to_sql(question: str, db: Session) -> dict[str, Any]:
     prompt = f"{_SCHEMA_PROMPT}\n\n{dynamic_context}Question: {question}\nSQL Query:"
     
     try:
-        response = client.models.generate_content(
-            model="gemini-3.5-flash",
+        response = _generate_content_with_retry(
+            model=GEMINI_MODEL,
             contents=prompt,
         )
         sql_query = response.text.strip()
@@ -198,8 +211,8 @@ def explain_alert(alert_id: int, db: Session) -> str:
     )
 
     try:
-        response = client.models.generate_content(
-            model="gemini-3.5-flash",
+        response = _generate_content_with_retry(
+            model=GEMINI_MODEL,
             contents=context,
         )
         return response.text.strip()
@@ -245,8 +258,8 @@ def recommend_mitigation(alert_id: int, db: Session) -> str:
     )
 
     try:
-        response = client.models.generate_content(
-            model="gemini-3.5-flash",
+        response = _generate_content_with_retry(
+            model=GEMINI_MODEL,
             contents=context,
         )
         return response.text.strip()

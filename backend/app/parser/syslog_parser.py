@@ -1,14 +1,18 @@
 """
 parser/syslog_parser.py
 
-Parses RFC 3164 BSD syslog format:
+Parses two syslog variants:
 
-    <PRIORITY>MON DD HH:MM:SS HOSTNAME TAG: MESSAGE
+  1. RFC 3164 (with priority byte) — common from network devices / remote syslog:
+       <PRIORITY>MON DD HH:MM:SS HOSTNAME TAG: MESSAGE
 
-where:
-  PRIORITY  = facility * 8 + severity  (integer inside angle brackets)
-  TAG       = process name with optional PID in brackets, e.g. sshd[1234]
-  MESSAGE   = free-form text, may contain an IP address
+  2. PRI-less syslog — the format written by rsyslog/journald to local files
+     on Debian/Ubuntu (/var/log/auth.log) and RHEL (/var/log/secure):
+       MON DD HH:MM:SS HOSTNAME TAG: MESSAGE
+
+Both variants carry: timestamp, hostname, tag (event_type), message.
+The PRI-less variant has no priority byte, so severity is inferred from
+message keywords instead.
 
 RFC 3164 reference: https://datatracker.ietf.org/doc/html/rfc3164
 """
@@ -64,6 +68,44 @@ _SYSLOG_RE = re.compile(
     r"(?P<tag>\S+?):\s+"
     r"(?P<message>.*)$"
 )
+
+# PRI-less syslog — the format written to local files by rsyslog/journald.
+# Seen in /var/log/auth.log (Debian/Ubuntu) and /var/log/secure (RHEL).
+# Identical structure but without the leading <PRIORITY> byte.
+_SYSLOG_RE_NOPRI = re.compile(
+    r"^(?P<mon>[A-Z][a-z]{2})\s+"
+    r"(?P<day>\d{1,2})\s+"
+    r"(?P<time>\d{2}:\d{2}:\d{2})\s+"
+    r"(?P<hostname>\S+)\s+"
+    r"(?P<tag>\S+?):\s+"
+    r"(?P<message>.*)$"
+)
+
+# Keyword-based severity inference used when there is no priority byte.
+_SEVERITY_KEYWORDS: list[tuple[str, str]] = [
+    ("emergency",   "emergency"),
+    ("critical",    "critical"),
+    ("alert",       "alert"),
+    ("failed",      "error"),
+    ("failure",     "error"),
+    ("error",       "error"),
+    ("denied",      "warning"),
+    ("invalid",     "warning"),
+    ("warn",        "warning"),
+    ("accepted",    "info"),
+    ("opened",      "info"),
+    ("started",     "info"),
+    ("session",     "info"),
+]
+
+
+def _infer_severity(message: str) -> Optional[str]:
+    """Infer severity from message keywords when no priority byte is present."""
+    lower = message.lower()
+    for keyword, severity in _SEVERITY_KEYWORDS:
+        if keyword in lower:
+            return severity
+    return "info"  # safe default for unparsed messages
 
 # Pattern to extract an IPv4 address from the message body.
 # Used to populate source_ip when the message says "from X.X.X.X" or
@@ -158,33 +200,51 @@ class SyslogParser(BaseParser):
             if not line.strip():
                 continue  # skip blank lines silently
 
+            # Try strict RFC 3164 first (has <PRIORITY> byte)
             m = _SYSLOG_RE.match(line)
-            if m is None:
-                logger.warning(
-                    "SyslogParser: line %d did not match RFC 3164 format — stored raw only",
-                    lineno,
-                )
-                entries.append(ParsedLogEntry(raw_log=line, source_format="syslog"))
+            if m is not None:
+                message_body = m.group("message")
+                entries.append(ParsedLogEntry(
+                    raw_log=line,
+                    source_format="syslog",
+                    timestamp=_parse_timestamp(
+                        m.group("mon"), m.group("day"), m.group("time")
+                    ),
+                    hostname=m.group("hostname"),
+                    event_type=m.group("tag"),
+                    severity=_parse_priority(m.group("priority")),
+                    source_ip=_extract_ip(message_body),
+                    message=message_body,
+                    destination_ip=None,
+                    username=_extract_username(message_body),
+                ))
                 continue
 
-            message_body = m.group("message")
+            # Fall back to PRI-less syslog (/var/log/auth.log style)
+            m2 = _SYSLOG_RE_NOPRI.match(line)
+            if m2 is not None:
+                message_body = m2.group("message")
+                entries.append(ParsedLogEntry(
+                    raw_log=line,
+                    source_format="syslog",
+                    timestamp=_parse_timestamp(
+                        m2.group("mon"), m2.group("day"), m2.group("time")
+                    ),
+                    hostname=m2.group("hostname"),
+                    event_type=m2.group("tag"),
+                    severity=_infer_severity(message_body),
+                    source_ip=_extract_ip(message_body),
+                    message=message_body,
+                    destination_ip=None,
+                    username=_extract_username(message_body),
+                ))
+                continue
 
-            entries.append(ParsedLogEntry(
-                raw_log=line,
-                source_format="syslog",
-                timestamp=_parse_timestamp(
-                    m.group("mon"), m.group("day"), m.group("time")
-                ),
-                hostname=m.group("hostname"),
-                # tag captures "sshd[1234]" — stored as event_type
-                event_type=m.group("tag"),
-                severity=_parse_priority(m.group("priority")),
-                # Extract source IP from message if present, else None
-                source_ip=_extract_ip(message_body),
-                message=message_body,
-                # These fields are not present in RFC 3164
-                destination_ip=None,
-                username=_extract_username(message_body),
-            ))
+            # Neither pattern matched
+            logger.warning(
+                "SyslogParser: line %d did not match any syslog format — stored raw only",
+                lineno,
+            )
+            entries.append(ParsedLogEntry(raw_log=line, source_format="syslog"))
 
         return entries

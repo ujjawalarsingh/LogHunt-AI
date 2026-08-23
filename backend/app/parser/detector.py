@@ -12,7 +12,7 @@ from typing import Optional
 from app.parser.base import ParsedLogEntry
 from app.parser.apache_parser import ApacheParser, _APACHE_RE
 from app.parser.json_parser import JsonParser
-from app.parser.syslog_parser import SyslogParser, _SYSLOG_RE
+from app.parser.syslog_parser import SyslogParser, _SYSLOG_RE, _SYSLOG_RE_NOPRI
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +48,10 @@ def detect_and_parse(file_content: str, filename: Optional[str] = None) -> list[
             except Exception:
                 pass
         elif _SYSLOG_RE.match(line) or (line.startswith("<") and ">" in line[:6]):
+            syslog_score += 1
+        elif _SYSLOG_RE_NOPRI.match(line):
+            # PRI-less syslog (/var/log/auth.log, /var/log/secure) —
+            # same format as RFC 3164 but without the leading <PRIORITY> byte.
             syslog_score += 1
         elif _APACHE_RE.match(line):
             apache_score += 1
