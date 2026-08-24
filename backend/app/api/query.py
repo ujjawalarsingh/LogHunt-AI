@@ -10,6 +10,7 @@ from typing import Any
 
 from app.database import get_db
 from app.services import gemini_service
+from app.services.gemini_service import GeminiServiceError
 
 router = APIRouter(tags=["Query Lab"])
 
@@ -41,6 +42,12 @@ def query_nl2sql(request: QueryRequest, db: Session = Depends(get_db)):
         # Validation or execution errors return 400
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except GeminiServiceError as e:
+        # Propagate the proper HTTP status code from the Gemini service
+        raise HTTPException(
+            status_code=e.status_code,
             detail=str(e)
         )
     except Exception as e:

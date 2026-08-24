@@ -4,7 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { getDashboard, uploadFile, explainAlert } from '../lib/api';
+import { getDashboard, uploadFile, explainAlert, recommendAlert } from '../lib/api';
 
 
 
@@ -68,6 +68,7 @@ export default function Dashboard() {
   const [uploadResult, setUploadResult] = useState(null);
 
   const [alertExplanations, setAlertExplanations] = useState({});
+  const [alertRecommendations, setAlertRecommendations] = useState({});
 
   const fileRef = useRef();
 
@@ -143,6 +144,37 @@ export default function Dashboard() {
       }));
     } catch (e) {
       setAlertExplanations(prev => ({
+        ...prev,
+        [alertId]: { loading: false, error: e.message }
+      }));
+    }
+  };
+
+  // ── AI Recommendation ──
+  const handleRecommend = async (alertId) => {
+    if (alertRecommendations[alertId]) {
+      // Toggle off if already open
+      setAlertRecommendations(prev => {
+        const next = { ...prev };
+        delete next[alertId];
+        return next;
+      });
+      return;
+    }
+
+    setAlertRecommendations(prev => ({
+      ...prev,
+      [alertId]: { loading: true }
+    }));
+
+    try {
+      const res = await recommendAlert(alertId);
+      setAlertRecommendations(prev => ({
+        ...prev,
+        [alertId]: { loading: false, text: res.recommendation }
+      }));
+    } catch (e) {
+      setAlertRecommendations(prev => ({
         ...prev,
         [alertId]: { loading: false, error: e.message }
       }));
@@ -359,9 +391,14 @@ export default function Dashboard() {
                           <div className="text-[11px] text-muted-foreground font-mono truncate">{alert.description}</div>
                           <div className="text-[10px] text-muted-foreground/60 mt-0.5">{fmt(alert.created_at)} · Log #{alert.log_id}</div>
                         </div>
-                        <Button variant="outline" size="sm" onClick={() => handleExplain(alert.id)} className="shrink-0 text-xs h-7 px-3">
-                          {alertExplanations[alert.id] ? 'Close' : 'Explain'}
-                        </Button>
+                        <div className="flex gap-2 shrink-0">
+                          <Button variant="outline" size="sm" onClick={() => handleExplain(alert.id)} className="text-xs h-7 px-3" disabled={alertExplanations[alert.id]?.loading}>
+                            {alertExplanations[alert.id] ? (alertExplanations[alert.id].loading ? 'Loading...' : 'Close') : 'Explain'}
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => handleRecommend(alert.id)} className="text-xs h-7 px-3" disabled={alertRecommendations[alert.id]?.loading}>
+                            {alertRecommendations[alert.id] ? (alertRecommendations[alert.id].loading ? 'Loading...' : 'Close') : 'Recommend'}
+                          </Button>
+                        </div>
                       </div>
 
                       {alertExplanations[alert.id] && (
@@ -377,7 +414,28 @@ export default function Dashboard() {
                             </div>
                           ) : (
                             <div className="text-foreground/90 leading-relaxed space-y-2 whitespace-pre-wrap font-sans text-xs">
+                              <h4 className="font-semibold text-primary mb-1">AI Explanation</h4>
                               {alertExplanations[alert.id].text}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {alertRecommendations[alert.id] && (
+                        <div className="mt-3 pt-3 border-t border-border/50 text-sm anim-fade-up">
+                          {alertRecommendations[alert.id].loading ? (
+                            <div className="flex items-center gap-2 text-muted-foreground py-2">
+                              <span className="animate-spin">⟳</span> Generating recommendations...
+                            </div>
+                          ) : alertRecommendations[alert.id].error ? (
+                            <div className="text-destructive flex items-center gap-2 py-2">
+                              <AlertTriangle className="w-4 h-4" />
+                              {alertRecommendations[alert.id].error}
+                            </div>
+                          ) : (
+                            <div className="text-foreground/90 leading-relaxed space-y-2 whitespace-pre-wrap font-sans text-xs">
+                              <h4 className="font-semibold text-green-500 mb-1">Recommended Mitigation</h4>
+                              {alertRecommendations[alert.id].text}
                             </div>
                           )}
                         </div>

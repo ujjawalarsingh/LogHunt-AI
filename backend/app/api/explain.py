@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.services import gemini_service
+from app.services.gemini_service import GeminiServiceError
 
 router = APIRouter(tags=["Incident Explanation"])
 
@@ -34,6 +35,11 @@ def explain_alert_endpoint(alert_id: int, db: Session = Depends(get_db)):
         # Alert not found or associated log not found
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    except GeminiServiceError as e:
+        raise HTTPException(
+            status_code=e.status_code,
             detail=str(e)
         )
     except Exception as e:

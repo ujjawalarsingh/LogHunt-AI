@@ -86,6 +86,14 @@ export function explainAlert(alertId) {
 }
 
 /**
+ * GET /alerts/{alert_id}/recommend
+ * @param {number} alertId 
+ */
+export function recommendAlert(alertId) {
+  return request(`/alerts/${alertId}/recommend`);
+}
+
+/**
  * POST /classify
  * @param {number} log_id 
  */

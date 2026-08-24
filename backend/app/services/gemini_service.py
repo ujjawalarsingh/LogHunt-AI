@@ -11,6 +11,7 @@ from typing import Any
 
 from google import genai
 from google.genai import types
+from google.genai.errors import APIError
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
@@ -26,18 +27,39 @@ logger = logging.getLogger(__name__)
 # Initialize the Gemini client. It automatically picks up GEMINI_API_KEY 
 # from the environment (loaded by python-dotenv in the app).
 client = genai.Client()
-GEMINI_MODEL = "gemini-flash-latest"
+GEMINI_MODEL = "models/gemini-3.5-flash"
+
+class GeminiServiceError(Exception):
+    def __init__(self, message, status_code=500):
+        super().__init__(message)
+        self.status_code = status_code
 
 def _generate_content_with_retry(model: str, contents: str) -> Any:
-    """Helper to retry Gemini API calls once on 503 errors."""
-    try:
-        return client.models.generate_content(model=model, contents=contents)
-    except Exception as e:
-        if "503" in str(e):
-            logger.warning("Gemini API returned 503. Retrying in 2 seconds...")
-            time.sleep(2)
+    """Helper to retry Gemini API calls with exponential backoff on 503/429/504 errors."""
+    max_retries = 3
+    base_delay = 2
+
+    for attempt in range(max_retries + 1):
+        try:
             return client.models.generate_content(model=model, contents=contents)
-        raise e
+        except APIError as e:
+            # e.code corresponds to HTTP status code in new google-genai SDK
+            if e.code in (429, 503, 504):
+                if attempt < max_retries:
+                    delay = base_delay * (2 ** attempt)
+                    logger.warning(f"Gemini API returned {e.code}. Retrying in {delay} seconds (attempt {attempt+1}/{max_retries})...")
+                    time.sleep(delay)
+                    continue
+                else:
+                    logger.error(f"Gemini API failed after {max_retries} retries with {e.code}.")
+                    raise GeminiServiceError(f"AI service temporarily unavailable (Error {e.code}). Please try again later.", status_code=e.code) from e
+            else:
+                # E.g. 400 Bad Request, 404 Not Found, etc.
+                logger.error(f"Gemini API failed with unrecoverable error {e.code}: {e.message}")
+                raise GeminiServiceError(f"AI service error: {e.message}", status_code=e.code) from e
+        except Exception as e:
+            logger.error(f"Unexpected error during Gemini API call: {e}")
+            raise GeminiServiceError("An unexpected error occurred communicating with the AI service.", status_code=500) from e
 
 
 _SCHEMA_PROMPT = """You are a PostgreSQL expert assisting a security analyst.
@@ -132,9 +154,11 @@ def natural_language_to_sql(question: str, db: Session) -> dict[str, Any]:
             contents=prompt,
         )
         sql_query = response.text.strip()
+    except GeminiServiceError as e:
+        raise e
     except Exception as e:
         logger.error(f"Gemini API error: {e}")
-        raise RuntimeError("Failed to generate SQL from natural language.") from e
+        raise GeminiServiceError("Failed to generate SQL from natural language.") from e
 
     # Sometimes Gemini still wraps in markdown despite instructions, so strip it if present
     if sql_query.startswith("```sql"):
@@ -216,9 +240,11 @@ def explain_alert(alert_id: int, db: Session) -> str:
             contents=context,
         )
         return response.text.strip()
+    except GeminiServiceError as e:
+        raise e
     except Exception as e:
         logger.error(f"Gemini API error during explain_alert: {e}")
-        raise RuntimeError("Failed to generate alert explanation using Gemini.") from e
+        raise GeminiServiceError("Failed to generate alert explanation using Gemini.") from e
 
 
 def recommend_mitigation(alert_id: int, db: Session) -> str:
@@ -263,9 +289,11 @@ def recommend_mitigation(alert_id: int, db: Session) -> str:
             contents=context,
         )
         return response.text.strip()
+    except GeminiServiceError as e:
+        raise e
     except Exception as e:
         logger.error(f"Gemini API error during recommend_mitigation: {e}")
-        raise RuntimeError("Failed to generate mitigation recommendations using Gemini.") from e
+        raise GeminiServiceError("Failed to generate mitigation recommendations using Gemini.") from e
 
 
 
