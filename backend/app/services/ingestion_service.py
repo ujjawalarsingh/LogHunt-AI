@@ -6,6 +6,8 @@ from app.models.project import Project
 from app.parser.detector import detect_and_parse, UnknownLogFormatError
 from app.repositories.log_repository import bulk_insert_logs
 from app.schemas.log import UploadResponse
+from app.detection.rules import detect_brute_force, detect_credential_stuffing, detect_privilege_escalation
+from app.detection.alert_writer import write_alerts
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +17,9 @@ def process_log_file(db: Session, file_content: str, filename: str, project_id: 
     1. Ensures a Project exists (creates one if not provided).
     2. Parses the log file (auto-detecting format).
     3. Persists the parsed entries to the database.
-    4. Returns a summary of the operation.
+    4. Runs the rule-based detection engine (brute force, credential stuffing,
+       privilege escalation) and writes any alerts to the database.
+    5. Returns a summary of the operation.
     """
     # 1. Project Management
     if not project_id:
@@ -57,7 +61,25 @@ def process_log_file(db: Session, file_content: str, filename: str, project_id: 
     # 3. Persistence
     inserted_count = bulk_insert_logs(db, entries, project_id)
 
-    # 4. Return Summary
+    # 4. Detection — run all rule-engine detectors on the newly inserted project
+    try:
+        bf_detections  = detect_brute_force(db, project_id=project_id)
+        cs_detections  = detect_credential_stuffing(db, project_id=project_id)
+        pe_detections  = detect_privilege_escalation(db, project_id=project_id)
+
+        write_alerts(db, bf_detections,  alert_type="brute_force")
+        write_alerts(db, cs_detections,  alert_type="credential_stuffing")
+        write_alerts(db, pe_detections,  alert_type="privilege_escalation")
+
+        logger.info(
+            "Detection complete for project %s: %d BF, %d CS, %d PE detections.",
+            project_id, len(bf_detections), len(cs_detections), len(pe_detections),
+        )
+    except Exception as exc:
+        # Detection failure must NOT roll back the successfully ingested logs.
+        logger.error("Detection step failed for project %s: %s", project_id, exc)
+
+    # 5. Return Summary
     return UploadResponse(
         filename=filename,
         format_detected=format_detected,

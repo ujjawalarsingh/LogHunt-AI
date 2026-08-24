@@ -1,0 +1,23 @@
+Aug 13 09:14:02 webserver01 sshd[2001]: Failed password for admin from 203.0.113.45 port 22 ssh2
+Aug 13 09:14:18 webserver01 sshd[2002]: Failed password for admin from 203.0.113.45 port 22 ssh2
+Aug 13 09:14:35 webserver01 sshd[2003]: Failed password for admin from 203.0.113.45 port 22 ssh2
+Aug 13 09:14:51 webserver01 sshd[2004]: Failed password for admin from 203.0.113.45 port 22 ssh2
+Aug 13 09:15:07 webserver01 sshd[2005]: Failed password for admin from 203.0.113.45 port 22 ssh2
+Aug 13 09:15:23 webserver01 sshd[2006]: Failed password for admin from 203.0.113.45 port 22 ssh2
+Aug 13 09:15:40 webserver01 sshd[2007]: Accepted password for admin from 203.0.113.45 port 22 ssh2
+Aug 13 09:16:02 webserver01 sudo[2010]: admin : TTY=pts/0 ; PWD=/home/admin ; USER=root ; COMMAND=/bin/bash
+Aug 13 09:17:15 webserver01 sshd[2020]: Failed password for victim from 172.16.0.9 port 22 ssh2
+Aug 13 09:17:29 webserver01 sshd[2021]: Failed password for victim from 172.16.0.9 port 22 ssh2
+Aug 13 09:17:44 webserver01 sshd[2022]: Failed password for victim from 172.16.0.9 port 22 ssh2
+Aug 13 09:17:58 webserver01 sshd[2023]: Accepted password for victim from 172.16.0.9 port 22 ssh2
+Aug 13 09:20:11 dbserver02 mysqld[3010]: Access denied for user 'root'@'10.0.0.15'
+Aug 13 09:22:34 webserver01 sshd[2030]: Accepted password for alice from 10.0.0.20 port 22 ssh2
+Aug 13 09:23:01 webserver01 CRON[2031]: (root) CMD (run-parts /etc/cron.hourly)
+Aug 13 09:25:47 webserver01 sudo[2040]: alice : TTY=pts/1 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/passwd root
+Aug 13 09:30:05 webserver01 sshd[2050]: Failed password for bob from 198.51.100.7 port 22 ssh2
+Aug 13 09:30:09 webserver01 sshd[2051]: Failed password for root from 198.51.100.7 port 22 ssh2
+Aug 13 09:30:13 webserver01 sshd[2052]: Failed password for admin from 198.51.100.7 port 22 ssh2
+Aug 13 09:30:17 webserver01 sshd[2053]: Failed password for deploy from 198.51.100.7 port 22 ssh2
+Aug 13 09:30:21 webserver01 sshd[2054]: Failed password for ubuntu from 198.51.100.7 port 22 ssh2
+Aug 13 09:31:44 webserver01 sshd[2060]: Accepted password for bob from 10.0.0.22 port 22 ssh2
+Aug 13 09:32:01 webserver01 sudo[2061]: bob : TTY=pts/2 ; PWD=/home/bob ; USER=root ; COMMAND=/usr/sbin/useradd hacker

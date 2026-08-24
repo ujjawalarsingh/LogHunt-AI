@@ -1,3 +1,5 @@
-<38>Oct 10 16:00:01 dbserver02 sudo[3001]: alice : USER=root ; COMMAND=/bin/bash
-<38>Oct 10 16:00:05 dbserver02 sudo[3001]: alice : USER=root ; COMMAND=/usr/bin/passwd root
-{"timestamp": "2026-10-10T16:05:00Z", "source_ip": "10.0.0.20", "username": "bob", "event_type": "role_change", "severity": "critical", "message": "User bob elevated to admin role"}
+Aug 10 15:00:01 webserver01 sudo[6001]: alice : TTY=pts/1 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/passwd root
+Aug 10 15:00:45 webserver01 sudo[6002]: bob : TTY=pts/2 ; PWD=/home/bob ; USER=root ; COMMAND=/usr/sbin/useradd hacker
+Aug 10 15:01:12 webserver01 sudo[6003]: deploy : TTY=pts/3 ; PWD=/opt/app ; USER=root ; COMMAND=/bin/bash
+Aug 10 15:02:00 webserver01 sshd[6010]: Accepted password for alice from 10.0.0.5 port 22 ssh2
+Aug 10 15:03:30 webserver01 sudo[6020]: alice : TTY=pts/1 ; PWD=/home/alice ; USER=root ; COMMAND=/bin/chmod 777 /etc/shadow
