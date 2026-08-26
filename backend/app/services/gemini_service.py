@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 # Initialize the Gemini client. It automatically picks up GEMINI_API_KEY 
 # from the environment (loaded by python-dotenv in the app).
 client = genai.Client()
-GEMINI_MODEL = "models/gemini-3.5-flash"
+GEMINI_MODEL = "models/gemini-3.5-flash-lite"
 
 class GeminiServiceError(Exception):
     def __init__(self, message, status_code=500):
