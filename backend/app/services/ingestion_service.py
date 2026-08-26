@@ -67,9 +67,9 @@ def process_log_file(db: Session, file_content: str, filename: str, project_id: 
         cs_detections  = detect_credential_stuffing(db, project_id=project_id)
         pe_detections  = detect_privilege_escalation(db, project_id=project_id)
 
-        write_alerts(db, bf_detections,  alert_type="brute_force")
-        write_alerts(db, cs_detections,  alert_type="credential_stuffing")
-        write_alerts(db, pe_detections,  alert_type="privilege_escalation")
+        write_alerts(db, bf_detections,  alert_type="brute_force", severity="high")
+        write_alerts(db, cs_detections,  alert_type="credential_stuffing", severity="critical")
+        write_alerts(db, pe_detections,  alert_type="privilege_escalation", severity="critical")
 
         logger.info(
             "Detection complete for project %s: %d BF, %d CS, %d PE detections.",

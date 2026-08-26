@@ -9,7 +9,7 @@ from app.models.alert import Alert
 
 logger = logging.getLogger(__name__)
 
-def write_alerts(db: Session, detections: list[dict], alert_type: str, source: str = "rule_engine") -> dict:
+def write_alerts(db: Session, detections: list[dict], alert_type: str, severity: str, source: str = "rule_engine") -> dict:
     """
     Takes detection dicts and creates Alert database rows idempotently.
     Returns a dict with the list of created alerts and the number skipped.
@@ -44,7 +44,7 @@ def write_alerts(db: Session, detections: list[dict], alert_type: str, source: s
             log_id=triggering_log_id,
             alert_type=alert_type,
             source=source,
-            severity="critical", # Brute force is critical
+            severity=severity,
             confidence_score=None,
             description=description
         )

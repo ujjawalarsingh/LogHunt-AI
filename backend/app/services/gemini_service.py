@@ -161,15 +161,19 @@ def natural_language_to_sql(question: str, db: Session) -> dict[str, Any]:
     # 1. Get distinct values for context
     try:
         event_types = [str(row[0]) for row in db.execute(text("SELECT DISTINCT event_type FROM logs WHERE event_type IS NOT NULL LIMIT 50")).fetchall()]
-        severities = [str(row[0]) for row in db.execute(text("SELECT DISTINCT severity FROM logs WHERE severity IS NOT NULL LIMIT 50")).fetchall()]
+        log_severities = [str(row[0]) for row in db.execute(text("SELECT DISTINCT severity FROM logs WHERE severity IS NOT NULL LIMIT 50")).fetchall()]
+        alert_severities = [str(row[0]) for row in db.execute(text("SELECT DISTINCT severity FROM alerts WHERE severity IS NOT NULL LIMIT 50")).fetchall()]
         
         dynamic_context = (
             "ACTUAL DATA CONTEXT:\n"
             f"- Distinct `logs.event_type` values currently in DB: {', '.join(event_types)}\n"
-            f"- Distinct `logs.severity` values currently in DB: {', '.join(severities)}\n"
-            "CRITICAL: When the user asks to filter by event type (like 'failed logins'), or severity, "
+            "\nLOG SEVERITY VALUES:\n"
+            f"- Distinct `logs.severity` values currently in DB: {', '.join(log_severities)}\n"
+            "\nALERT SEVERITY VALUES:\n"
+            f"- Distinct `alerts.severity` values currently in DB: {', '.join(alert_severities)}\n"
+            "\nCRITICAL: When the user asks to filter by event type (like 'failed logins'), or severity, "
             "you MUST use one of the exact distinct values listed above that best matches their intent, "
-            "instead of inventing a value like 'failed_login'.\n\n"
+            "instead of inventing a value like 'failed_login'. Pay attention to whether they are querying logs or alerts.\n\n"
         )
     except Exception as e:
         logger.warning(f"Could not fetch distinct values for prompt context: {e}")
