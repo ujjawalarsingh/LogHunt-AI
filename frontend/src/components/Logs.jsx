@@ -50,11 +50,23 @@ export default function Logs() {
     fetchLogsData();
   }, [fetchLogsData]);
 
+  // Maps dropdown values to the actual DB severity strings they should match.
+  // A single dropdown option can match multiple DB values (e.g. 'error' covers
+  // both 'error' and 'high' in case either is stored).
+  const SEVERITY_MAP = {
+    all: null,
+    critical: ['critical'],
+    error: ['error', 'high'],
+    warning: ['warning', 'medium'],
+    info: ['info', 'notice', 'debug'],
+  };
+
   const filteredLogs = useMemo(() => {
     return logs.filter(log => {
       if (severityFilter !== 'all') {
         const logSev = log.severity?.toLowerCase() || '';
-        if (logSev !== severityFilter.toLowerCase()) return false;
+        const allowed = SEVERITY_MAP[severityFilter] ?? [severityFilter];
+        if (!allowed.includes(logSev)) return false;
       }
       if (searchTerm.trim()) {
         const q = searchTerm.toLowerCase();
@@ -105,8 +117,8 @@ export default function Logs() {
              >
                <option value="all">All Severities</option>
                <option value="critical">Critical</option>
-               <option value="high">High / Error</option>
-               <option value="medium">Medium / Warning</option>
+               <option value="error">High / Error</option>
+               <option value="warning">Medium / Warning</option>
                <option value="info">Info / Notice</option>
              </select>
           </div>

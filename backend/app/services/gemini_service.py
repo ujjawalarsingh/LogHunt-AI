@@ -123,12 +123,42 @@ def _validate_sql(sql: str) -> None:
         raise ValueError("Query contains comments, which are not permitted.")
 
 
+# Destructive SQL command keywords that should never appear in a read-only question.
+_DESTRUCTIVE_INTENT_KEYWORDS = [
+    "delete", "drop", "update", "insert", "truncate",
+    "alter", "grant", "revoke", "commit", "rollback",
+]
+
+def _check_question_intent(question: str) -> None:
+    """
+    Pre-Gemini guard: reject questions that express destructive SQL intent.
+
+    Uses word-boundary regex so that words like 'updates' (used in a normal
+    sentence) do NOT trigger this guard — only standalone command tokens do.
+
+    This is Layer 1 (user intent). _validate_sql() remains as Layer 2
+    (generated SQL). Both layers must be satisfied.
+
+    Raises ValueError if a destructive intent keyword is found.
+    """
+    q_lower = question.lower()
+    for keyword in _DESTRUCTIVE_INTENT_KEYWORDS:
+        if re.search(r'\b' + keyword + r'\b', q_lower):
+            raise ValueError(
+                f"Only read-only queries are allowed. "
+                f"Questions containing '{keyword}' operations are not permitted."
+            )
+
+
 def natural_language_to_sql(question: str, db: Session) -> dict[str, Any]:
     """
     Converts a natural language question into SQL using Gemini, executes it, 
     and returns the SQL and results.
     """
-    # 0. Get distinct values for context
+    # 0. Layer 1: Raw question intent check — BEFORE calling Gemini
+    _check_question_intent(question)
+
+    # 1. Get distinct values for context
     try:
         event_types = [str(row[0]) for row in db.execute(text("SELECT DISTINCT event_type FROM logs WHERE event_type IS NOT NULL LIMIT 50")).fetchall()]
         severities = [str(row[0]) for row in db.execute(text("SELECT DISTINCT severity FROM logs WHERE severity IS NOT NULL LIMIT 50")).fetchall()]

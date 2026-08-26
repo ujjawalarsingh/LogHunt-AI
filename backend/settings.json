@@ -1,6 +1,6 @@
 {
     "brute_force_threshold": 5,
-    "brute_force_window_minutes": 15,
+    "brute_force_window_minutes": 5,
     "credential_stuffing_threshold": 3,
     "credential_stuffing_window_minutes": 10
 }
