@@ -5,6 +5,7 @@ import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { getDashboard, uploadFile, explainAlert, recommendAlert } from '../lib/api';
+import ReactMarkdown from 'react-markdown';
 
 
 
@@ -73,8 +74,8 @@ export default function Dashboard() {
   const fileRef = useRef();
 
   // ── Fetch dashboard data ──
-  const fetchDashboard = useCallback(async () => {
-    setLoading(true);
+  const fetchDashboard = useCallback(async (isBackground = false) => {
+    if (!isBackground) setLoading(true);
     setFetchError(null);
     try {
       const data = await getDashboard();
@@ -82,7 +83,7 @@ export default function Dashboard() {
     } catch (e) {
       setFetchError(e.message);
     } finally {
-      setLoading(false);
+      if (!isBackground) setLoading(false);
     }
   }, []);
 
@@ -105,7 +106,7 @@ export default function Dashboard() {
       setUploadResult(result);
       setTimeout(() => setUploadDone(true), 300);
       // Re-fetch so all numbers update immediately
-      await fetchDashboard();
+      await fetchDashboard(true);
     } catch (e) {
       setUploadError(e.message);
       setUploadProgress(null);
@@ -413,9 +414,23 @@ export default function Dashboard() {
                               {alertExplanations[alert.id].error}
                             </div>
                           ) : (
-                            <div className="text-foreground/90 leading-relaxed space-y-2 whitespace-pre-wrap font-sans text-xs">
+                            <div className="text-foreground/90 leading-relaxed space-y-2 text-xs markdown-content">
                               <h4 className="font-semibold text-primary mb-1">AI Explanation</h4>
-                              {alertExplanations[alert.id].text}
+                              <ReactMarkdown
+                                components={{
+                                  p: ({node, ...props}) => <p className="mb-2" {...props} />,
+                                  ul: ({node, ...props}) => <ul className="list-disc pl-4 mb-2" {...props} />,
+                                  ol: ({node, ...props}) => <ol className="list-decimal pl-4 mb-2" {...props} />,
+                                  li: ({node, ...props}) => <li className="mb-1" {...props} />,
+                                  h1: ({node, ...props}) => <h1 className="text-sm font-bold mt-3 mb-1" {...props} />,
+                                  h2: ({node, ...props}) => <h2 className="text-sm font-bold mt-3 mb-1" {...props} />,
+                                  h3: ({node, ...props}) => <h3 className="text-xs font-bold mt-2 mb-1" {...props} />,
+                                  code: ({node, inline, ...props}) => inline ? <code className="bg-muted px-1 py-0.5 rounded text-[10px] font-mono" {...props} /> : <pre className="bg-muted p-2 rounded text-[10px] font-mono overflow-x-auto mb-2"><code {...props} /></pre>,
+                                  strong: ({node, ...props}) => <strong className="font-bold text-foreground" {...props} />,
+                                }}
+                              >
+                                {alertExplanations[alert.id].text}
+                              </ReactMarkdown>
                             </div>
                           )}
                         </div>
@@ -433,9 +448,23 @@ export default function Dashboard() {
                               {alertRecommendations[alert.id].error}
                             </div>
                           ) : (
-                            <div className="text-foreground/90 leading-relaxed space-y-2 whitespace-pre-wrap font-sans text-xs">
+                            <div className="text-foreground/90 leading-relaxed space-y-2 text-xs markdown-content">
                               <h4 className="font-semibold text-green-500 mb-1">Recommended Mitigation</h4>
-                              {alertRecommendations[alert.id].text}
+                              <ReactMarkdown
+                                components={{
+                                  p: ({node, ...props}) => <p className="mb-2" {...props} />,
+                                  ul: ({node, ...props}) => <ul className="list-disc pl-4 mb-2" {...props} />,
+                                  ol: ({node, ...props}) => <ol className="list-decimal pl-4 mb-2" {...props} />,
+                                  li: ({node, ...props}) => <li className="mb-1" {...props} />,
+                                  h1: ({node, ...props}) => <h1 className="text-sm font-bold mt-3 mb-1" {...props} />,
+                                  h2: ({node, ...props}) => <h2 className="text-sm font-bold mt-3 mb-1" {...props} />,
+                                  h3: ({node, ...props}) => <h3 className="text-xs font-bold mt-2 mb-1" {...props} />,
+                                  code: ({node, inline, ...props}) => inline ? <code className="bg-muted px-1 py-0.5 rounded text-[10px] font-mono" {...props} /> : <pre className="bg-muted p-2 rounded text-[10px] font-mono overflow-x-auto mb-2"><code {...props} /></pre>,
+                                  strong: ({node, ...props}) => <strong className="font-bold text-foreground" {...props} />,
+                                }}
+                              >
+                                {alertRecommendations[alert.id].text}
+                              </ReactMarkdown>
                             </div>
                           )}
                         </div>

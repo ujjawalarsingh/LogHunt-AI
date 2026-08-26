@@ -1,11 +1,13 @@
 /* eslint-disable no-unused-vars */
-import { Shield, Radar, LayoutDashboard, FileUp, BarChart2, Settings, Database, Cpu, RefreshCw } from 'lucide-react';
+import { Shield, Radar, LayoutDashboard, FileUp, BarChart2, Settings, Database, Cpu, RefreshCw, List, AlertTriangle } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from './ui/button';
 
 
 const NAV_ITEMS = [
   { name: 'Dashboard', icon: LayoutDashboard },
+  { name: 'Logs', icon: List },
+  { name: 'Alerts', icon: AlertTriangle },
   { name: 'LLM Analysis', icon: Cpu },
   { name: 'SQL Query Lab', icon: Database },
   { name: 'Analytics', icon: BarChart2 },

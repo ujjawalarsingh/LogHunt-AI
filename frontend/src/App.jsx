@@ -2,6 +2,8 @@ import { useState } from 'react';
 import LandingPage from './components/LandingPage';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
+import Logs from './components/Logs';
+import Alerts from './components/Alerts';
 import LLMAnalysis from './components/LLMAnalysis';
 import Analytics from './components/Analytics';
 import Settings from './components/Settings';
@@ -23,6 +25,8 @@ function App() {
         onLanding={() => setView('landing')}
       />
       {page === 'Dashboard' && <Dashboard />}
+      {page === 'Logs' && <Logs />}
+      {page === 'Alerts' && <Alerts />}
       {page === 'SQL Query Lab' && <QueryLab />}
       {page === 'LLM Analysis' && <LLMAnalysis />}
       {page === 'Analytics' && <Analytics />}
