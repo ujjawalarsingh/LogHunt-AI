@@ -203,5 +203,5 @@ The repository includes a `sample_logs/` directory containing various log files 
 ## ⚠️ Known Limitations
 
 1. **Duplicate Upload Alert Generation**: The system does not perform content-hash deduplication across uploads. Uploading the exact same log file twice to the same project will generate a duplicate set of alerts.
-2. **LoRA SQL Injection Performance**: The experimental ML classifier's performance on SQL Injection is highly unreliable (F1=0.00) due to dataset limitations in the fine-tuning phase. Operational SQLi detection relies entirely on the deterministic rule engine.
+2. **Experimental LoRA Classifier — SQL Injection Classification**: The experimental LoRA classifier currently achieves an F1 score of 0.00 for the SQL Injection class due to severe training-data limitations and a mismatch between the original network-flow training domain and LogHunt's application-log inference domain. Predictions for this class are therefore unreliable. This limitation does not affect operational SQL Injection detection, which is handled separately by the deterministic rule-based detection engine.
 3. **No Real-time Stream Processing**: LogHunt AI is currently built for batch processing via file uploads. It does not actively tail or stream live server logs.
