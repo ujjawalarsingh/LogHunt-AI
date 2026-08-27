@@ -6,7 +6,7 @@ from app.models.project import Project
 from app.parser.detector import detect_and_parse, UnknownLogFormatError
 from app.repositories.log_repository import bulk_insert_logs
 from app.schemas.log import UploadResponse
-from app.detection.rules import detect_brute_force, detect_credential_stuffing, detect_privilege_escalation
+from app.detection.rules import detect_brute_force, detect_credential_stuffing, detect_privilege_escalation, detect_sql_injection
 from app.detection.alert_writer import write_alerts
 
 logger = logging.getLogger(__name__)
@@ -45,7 +45,11 @@ def process_log_file(db: Session, file_content: str, filename: str, project_id: 
             inserted_count=0
         )
 
-    format_detected = entries[0].source_format if entries else "unknown"
+    formats = {e.source_format for e in entries if e.source_format}
+    if len(formats) > 1:
+        format_detected = "mixed"
+    else:
+        format_detected = entries[0].source_format if entries else "unknown"
 
     # A line is considered 'failed' if the parser couldn't extract any meaningful data
     # beyond the raw_log and source_format fields.
@@ -66,14 +70,16 @@ def process_log_file(db: Session, file_content: str, filename: str, project_id: 
         bf_detections  = detect_brute_force(db, project_id=project_id)
         cs_detections  = detect_credential_stuffing(db, project_id=project_id)
         pe_detections  = detect_privilege_escalation(db, project_id=project_id)
+        sqli_detections = detect_sql_injection(db, project_id=project_id)
 
         write_alerts(db, bf_detections,  alert_type="brute_force", severity="high")
         write_alerts(db, cs_detections,  alert_type="credential_stuffing", severity="critical")
         write_alerts(db, pe_detections,  alert_type="privilege_escalation", severity="critical")
+        write_alerts(db, sqli_detections, alert_type="sql_injection", severity="critical")
 
         logger.info(
-            "Detection complete for project %s: %d BF, %d CS, %d PE detections.",
-            project_id, len(bf_detections), len(cs_detections), len(pe_detections),
+            "Detection complete for project %s: %d BF, %d CS, %d PE, %d SQLi detections.",
+            project_id, len(bf_detections), len(cs_detections), len(pe_detections), len(sqli_detections)
         )
     except Exception as exc:
         # Detection failure must NOT roll back the successfully ingested logs.

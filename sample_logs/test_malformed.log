@@ -1,0 +1,1 @@
+This is a random garbage line with UNION SELECT inside it that the parser will fail on

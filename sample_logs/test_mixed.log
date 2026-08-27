@@ -1,0 +1,11 @@
+192.168.1.100 - - [10/Aug/2026:14:22:03 +0000] "GET /index.html HTTP/1.1" 200 512
+Aug 10 14:22:05 server sshd[1234]: Failed password for admin from 192.168.1.50 port 22 ssh2
+{"timestamp":"2026-08-10T14:22:10Z","source_ip":"192.168.1.60","event_type":"login","message":"User login failed"}
+Aug 10 14:22:15 server sshd: Accepted password for user from 192.168.1.70 port 22
+192.168.1.100 - - [10/Aug/2026:14:22:20 +0000] "GET /search?q=1%27%20OR%201=1 HTTP/1.1" 200 512
+192.168.1.50 - - [10/Aug/2026:14:22:31 +0000] "POST /login HTTP/1.1" 401 512
+192.168.1.50 - - [10/Aug/2026:14:22:32 +0000] "POST /login HTTP/1.1" 401 512
+192.168.1.50 - - [10/Aug/2026:14:22:33 +0000] "POST /login HTTP/1.1" 401 512
+192.168.1.50 - - [10/Aug/2026:14:22:34 +0000] "POST /login HTTP/1.1" 401 512
+192.168.1.50 - - [10/Aug/2026:14:22:35 +0000] "POST /login HTTP/1.1" 401 512
+This is an unparseable malformed line that should fail

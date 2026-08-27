@@ -76,11 +76,45 @@ def detect_and_parse(file_content: str, filename: Optional[str] = None) -> list[
         best_format, filename or "unknown", best_score, len(sample_lines)
     )
 
-    if best_format == "syslog":
-        parser = SyslogParser()
-    elif best_format == "json":
-        parser = JsonParser()
-    else:  # best_format == "apache"
-        parser = ApacheParser()
+    # Initialize all parsers
+    parser_map = {
+        "apache": ApacheParser(),
+        "syslog": SyslogParser(),
+        "json": JsonParser()
+    }
 
-    return parser.parse(file_content)
+    # Order parsers to try the best format first for performance
+    ordered_formats = [best_format] + [fmt for fmt in parser_map if fmt != best_format]
+
+    entries = []
+
+    for line in lines:
+        line_entry = None
+        for fmt in ordered_formats:
+            # parser.parse splits string into lines internally, so passing a single line is safe
+            result = parser_map[fmt].parse(line)
+            if not result:
+                continue
+            entry = result[0]
+
+            # A parsed entry is considered "successful" if at least one extracted field is present
+            is_parsed = not (
+                entry.timestamp is None and entry.source_ip is None and
+                entry.destination_ip is None and entry.hostname is None and
+                entry.username is None and entry.event_type is None and
+                entry.severity is None and entry.message is None
+            )
+
+            if is_parsed:
+                line_entry = entry
+                break
+            else:
+                # If it failed, keep the failure result from the best_format as a fallback,
+                # but continue trying other parsers.
+                if line_entry is None or fmt == best_format:
+                    line_entry = entry
+
+        if line_entry:
+            entries.append(line_entry)
+
+    return entries

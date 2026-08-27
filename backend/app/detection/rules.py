@@ -35,6 +35,16 @@ PRIVILEGE_ESCALATION_KEYWORDS = [
     "escalat"
 ]
 
+# High-confidence SQL injection patterns (case-insensitive)
+SQLI_KEYWORDS = [
+    "union select", "union%20select",
+    "' or 1=1", "%27%20or%201=1", "'%20or%201=1",
+    "' or '1'='1", "%27%20or%20%271%27=%271", "'%20or%20'1'='1", "'%20or%20%271%27=%271",
+    "waitfor delay", "waitfor%20delay",
+    "pg_sleep("
+]
+
+
 
 def detect_brute_force(db: Session, project_id: int | None = None) -> list[dict]:
     """
@@ -219,4 +229,36 @@ def detect_privilege_escalation(db: Session, project_id: int | None = None) -> l
         
     return detections
 
+def detect_sql_injection(db: Session, project_id: int | None = None) -> list[dict]:
+    """
+    Detects SQL injection attempts.
+    
+    Criteria:
+    - Log message or raw_log matches high-confidence SQL injection patterns
+    - Single log line is sufficient
+    """
+    clauses = [Log.message.ilike(f"%{kw}%") for kw in SQLI_KEYWORDS]
+    clauses.extend([Log.raw_log.ilike(f"%{kw}%") for kw in SQLI_KEYWORDS])
+    
+    query = db.query(Log).filter(or_(*clauses))
+    
+    if project_id is not None:
+        query = query.filter(Log.project_id == project_id)
+        
+    logs = query.order_by(asc(Log.timestamp)).all()
+    
+    detections = []
+    
+    for log in logs:
+        identity = log.source_ip or "Unknown IP"
+            
+        detections.append({
+            "source_ip": identity,
+            "count": 1,
+            "start_time": log.timestamp,
+            "end_time": log.timestamp,
+            "log_ids": [log.id]
+        })
+        
+    return detections
 
