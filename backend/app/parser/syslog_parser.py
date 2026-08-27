@@ -160,7 +160,7 @@ def _extract_ip(message: str) -> Optional[str]:
 
 
 _USERNAME_FOR_RE = re.compile(r"for\s+(\S+)\s+from")
-_USERNAME_SUDO_RE = re.compile(r"^(\S+)\s*:\s*USER=")
+_USERNAME_SUDO_RE = re.compile(r"^(\S+)\s*:\s*(?:TTY=|PWD=|USER=)")
 
 def _extract_username(message: str) -> Optional[str]:
     """
