@@ -56,8 +56,10 @@ export default function Logs() {
   const SEVERITY_MAP = {
     all: null,
     critical: ['critical'],
-    error: ['error', 'high'],
+    high: ['error', 'high'],
+    error: ['error', 'high'], // Fallback alias
     warning: ['warning', 'medium'],
+    medium: ['warning', 'medium'], // Fallback alias
     info: ['info', 'notice', 'debug'],
   };
 
@@ -117,7 +119,7 @@ export default function Logs() {
              >
                <option value="all">All Severities</option>
                <option value="critical">Critical</option>
-               <option value="error">High / Error</option>
+               <option value="high">High / Error</option>
                <option value="warning">Medium / Warning</option>
                <option value="info">Info / Notice</option>
              </select>
