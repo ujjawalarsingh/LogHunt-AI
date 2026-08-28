@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: loghunt-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-loghunt}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-loghunt_dev_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-loghunt_db}
+    volumes:
+      - loghunt_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  loghunt_data:

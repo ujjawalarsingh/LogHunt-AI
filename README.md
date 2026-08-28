@@ -115,16 +115,17 @@ log_analyzer/
 ### Prerequisites
 - Python 3.10+
 - Node.js 18+
-- PostgreSQL 14+
+- Docker Desktop
 - A Google Gemini API Key
 
 ### 1. PostgreSQL Database Setup
-Create a PostgreSQL database and a user with access to it.
-```sql
-CREATE DATABASE loghunt_db;
-CREATE USER loghunt WITH PASSWORD 'your_postgres_password';
-GRANT ALL PRIVILEGES ON DATABASE loghunt_db TO loghunt;
+LogHunt AI provides a reproducible PostgreSQL 16 database environment via Docker Compose.
+1. Ensure **Docker Desktop** is installed and running.
+2. From the project root directory, start the database:
+```cmd
+docker compose up -d
 ```
+The PostgreSQL container will start and expose itself on `localhost:5432`. It automatically initializes the configured development database (`loghunt_db`) and user (`loghunt`).
 
 ### 2. Backend Setup
 Navigate to the `backend` directory, create a virtual environment, and install dependencies.
@@ -136,11 +137,11 @@ pip install -r requirements.txt
 ```
 
 **Environment Variables:**
-Create a `.env` file in the `backend` directory based on `.env.example`:
-```env
-DATABASE_URL=postgresql://loghunt:your_postgres_password@localhost:5432/loghunt_db
-GEMINI_API_KEY=your_gemini_api_key_here
+Copy `backend/.env.example` to `backend/.env` and add your own Gemini API key:
+```cmd
+copy .env.example .env
 ```
+The example file already contains the correct default `DATABASE_URL` for the Docker Compose container. Do not commit real API keys or passwords.
 
 **Initialize Database:**
 ```cmd
