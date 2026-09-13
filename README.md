@@ -1,6 +1,10 @@
 # LogHunt AI
 
-**LogHunt AI** is an intelligent, full-stack log analysis and threat detection platform. It combines a deterministic rule-based detection engine with an experimental Machine Learning classifier (LoRA) and generative AI (Gemini) to help security analysts ingest, query, and understand log data effectively.
+GitHub Repository: [ujjawalarsingh/LogHunt-AI](https://github.com/ujjawalarsingh/LogHunt-AI)
+
+**LogHunt AI** is a modern, security-focused log analysis platform that helps analysts ingest, parse, investigate, and explain operational logs with speed and clarity. It brings together a deterministic rule-based detection engine, an experimental ML classifier, and Gemini-powered analysis to surface suspicious activity and support faster incident response.
+
+Built for real-world security workflows, LogHunt AI can detect brute-force attempts, credential stuffing, privilege escalation, and SQL injection patterns while also enabling natural-language querying and AI-driven explanations.
 
 ---
 
@@ -109,6 +113,35 @@ log_analyzer/
 ```
 
 ---
+
+## 🚀 Quick Start
+
+1. Start PostgreSQL with Docker:
+   ```bash
+   docker compose up -d
+   ```
+2. Set up the backend environment and install dependencies:
+   ```bash
+   cd backend
+   python -m venv venv
+   venv\Scripts\activate
+   pip install -r requirements.txt
+   ```
+3. Configure your Gemini API key in `backend/.env`.
+4. Initialize the database:
+   ```bash
+   python db_init.py
+   ```
+5. Start the backend and frontend:
+   ```bash
+   cd backend
+   uvicorn app.main:app --reload
+   ```
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
 
 ## 🚀 Setup Instructions
 
